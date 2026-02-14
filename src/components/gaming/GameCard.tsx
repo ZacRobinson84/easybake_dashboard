@@ -126,7 +126,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
     >
       {content}
     </a>

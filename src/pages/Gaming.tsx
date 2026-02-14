@@ -50,7 +50,7 @@ export default function Gaming() {
       <div className="mb-6 flex items-center gap-3">
         <Calendar className="h-6 w-6 text-indigo-600" />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Today's Game Releases</h1>
+          <h1 className="text-2xl font-bold text-white">Today's Game Releases</h1>
           <p className="text-sm text-gray-500">{today}</p>
         </div>
       </div>

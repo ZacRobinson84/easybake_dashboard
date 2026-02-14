@@ -7,7 +7,7 @@ interface BottomNavProps {
 
 export default function BottomNav({ navItems }: BottomNavProps) {
   return (
-    <nav className="flex md:hidden fixed bottom-0 inset-x-0 h-16 z-50 bg-white border-t border-gray-200">
+    <nav className="flex md:hidden fixed bottom-0 inset-x-0 h-16 z-50 border-t border-gray-200" style={{ backgroundColor: '#F5EEE4' }}>
       {navItems.map((item) => (
         <NavLink
           key={item.path}

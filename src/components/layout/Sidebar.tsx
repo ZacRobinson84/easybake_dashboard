@@ -7,8 +7,11 @@ interface SidebarProps {
 
 export default function Sidebar({ navItems }: SidebarProps) {
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-gray-200 bg-white">
-      <div className="p-6 text-xl font-bold text-indigo-600">EasyBake</div>
+    <aside className="hidden md:flex flex-col w-64 border-r border-gray-200" style={{ backgroundColor: '#F5EEE4' }}>
+      <div className="flex items-center gap-2 rounded-lg p-6 text-xl font-bold text-indigo-600" style={{ backgroundColor: '#F5EEE4' }}>
+        <img src="/bread_cat.png" alt="BakeBoard logo" className="h-14 w-14 rounded-full object-cover ring-2 ring-amber-600/20" />
+        BakeBoard
+      </div>
       <nav className="flex flex-col gap-1 px-3">
         {navItems.map((item) => (
           <NavLink

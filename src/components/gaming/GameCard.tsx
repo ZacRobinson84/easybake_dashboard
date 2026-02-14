@@ -5,6 +5,7 @@ interface GameCardProps {
   coverUrl: string | null;
   platforms: string[];
   steamAppId: string | null;
+  websiteUrl: string | null;
   steamReviews: {
     totalPositive: number;
     totalNegative: number;
@@ -13,15 +14,19 @@ interface GameCardProps {
   } | null;
 }
 
-export default function GameCard({ name, coverUrl, platforms, steamAppId, steamReviews }: GameCardProps) {
+export default function GameCard({ name, coverUrl, platforms, steamAppId, websiteUrl, steamReviews }: GameCardProps) {
+  const href = steamAppId
+    ? `https://store.steampowered.com/app/${steamAppId}`
+    : websiteUrl ?? `https://store.steampowered.com/search/?term=${encodeURIComponent(name)}`;
+
   const content = (
     <>
-      <div className="aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100">
+      <div className="overflow-hidden rounded-t-lg bg-gray-100">
         {coverUrl ? (
           <img
             src={coverUrl}
             alt={name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -55,21 +60,14 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, steamR
     </>
   );
 
-  const className =
-    'group overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-200 hover:shadow-lg';
-
-  if (steamAppId) {
-    return (
-      <a
-        href={`https://store.steampowered.com/app/${steamAppId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return <div className={className}>{content}</div>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
+    >
+      {content}
+    </a>
+  );
 }

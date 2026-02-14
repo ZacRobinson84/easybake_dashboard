@@ -36,11 +36,11 @@ export async function fetchTodayReleases(clientId: string, clientSecret: string)
   const startOfDay = Math.floor(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime() / 1000);
   const endOfDay = startOfDay + 86400;
 
-  const body = `
-    fields name,cover.url,platforms.name,external_games.category,external_games.uid;
-    where first_release_date >= ${startOfDay} & first_release_date < ${endOfDay};
-    limit 50;
-  `.trim();
+  const body = [
+    'fields name,cover.url,platforms.name,external_games.category,external_games.uid,websites.url,websites.category;',
+    `where first_release_date >= ${startOfDay} & first_release_date < ${endOfDay};`,
+    'limit 50;',
+  ].join('\n');
 
   const res = await fetch('https://api.igdb.com/v4/games', {
     method: 'POST',
@@ -48,6 +48,7 @@ export async function fetchTodayReleases(clientId: string, clientSecret: string)
       'Client-ID': clientId,
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'text/plain',
+      'Accept': 'application/json',
     },
     body,
   });
@@ -65,12 +66,17 @@ export async function fetchTodayReleases(clientId: string, clientSecret: string)
       coverUrl = `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`;
     }
 
+    // Prefer official website (category 1), then any available website
+    const officialSite = game.websites?.find((w) => w.category === 1);
+    const websiteUrl = officialSite?.url ?? game.websites?.[0]?.url ?? null;
+
     return {
       id: game.id,
       name: game.name,
       coverUrl,
       platforms: game.platforms?.map((p) => p.name) ?? [],
       steamAppId: steamExternal?.uid ?? null,
+      websiteUrl,
     };
   });
 }

@@ -11,12 +11,18 @@ export interface IGDBPlatform {
   name: string;
 }
 
+export interface IGDBWebsite {
+  category: number;
+  url: string;
+}
+
 export interface IGDBGame {
   id: number;
   name: string;
   cover?: IGDBCover;
   platforms?: IGDBPlatform[];
   external_games?: IGDBExternalGame[];
+  websites?: IGDBWebsite[];
 }
 
 export interface GameRelease {
@@ -25,6 +31,7 @@ export interface GameRelease {
   coverUrl: string | null;
   platforms: string[];
   steamAppId: string | null;
+  websiteUrl: string | null;
 }
 
 export interface SteamReviewSummary {

@@ -20,8 +20,13 @@ app.use(cors({ origin: 'http://localhost:5173' }));
 
 app.get('/api/gaming/releases', async (_req, res) => {
   try {
+    console.log('Fetching IGDB releases...');
     const releases = await fetchTodayReleases(clientId, clientSecret);
+    console.log(`Got ${releases.length} releases from IGDB`);
+
+    console.log('Fetching Steam reviews...');
     const reviewsMap = await fetchAllSteamReviews(releases);
+    console.log(`Got reviews for ${reviewsMap.size} games`);
 
     const enriched: GameReleaseWithReviews[] = releases.map((game) => ({
       ...game,
@@ -44,7 +49,9 @@ app.get('/api/gaming/releases', async (_req, res) => {
 
     res.json(enriched);
   } catch (err) {
-    console.error('Error fetching releases:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching releases:', message);
+    console.error(err);
     res.status(500).json({ error: 'Failed to fetch game releases' });
   }
 });

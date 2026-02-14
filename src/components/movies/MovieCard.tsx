@@ -64,9 +64,8 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
       const colorThief = new ColorThief();
       const [r, g, b] = colorThief.getColor(img);
       const [h, s] = rgbToHsl(r, g, b);
-      const compH = (h + 0.5) % 1;
-      const [r1, g1, b1] = hslToRgb(compH, Math.min(s, 0.5), 0.82);
-      const [r2, g2, b2] = hslToRgb(compH, Math.min(s, 0.6), 0.68);
+      const [r1, g1, b1] = hslToRgb(h, Math.min(s, 0.5), 0.82);
+      const [r2, g2, b2] = hslToRgb(h, Math.min(s, 0.6), 0.68);
       setGradientStyle({
         background: `linear-gradient(to bottom, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))`,
       });

@@ -64,10 +64,10 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
       const colorThief = new ColorThief();
       const [r, g, b] = colorThief.getColor(img);
       const [h, s] = rgbToHsl(r, g, b);
-      const [r1, g1, b1] = hslToRgb(h, Math.min(s, 0.5), 0.82);
-      const [r2, g2, b2] = hslToRgb(h, Math.min(s, 0.6), 0.68);
+      const [r1, g1, b1] = hslToRgb(h, Math.min(s, 0.5), 0.74);
+      const [r2, g2, b2] = hslToRgb(h, Math.min(s, 0.6), 0.60);
       setGradientStyle({
-        background: `linear-gradient(to bottom, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))`,
+        background: `linear-gradient(to top, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))`,
       });
     } catch {
       // fallback to default
@@ -94,7 +94,7 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
 
   const hasGradient = !!gradientStyle;
   const reversedGradientStyle: React.CSSProperties | undefined = gradientStyle?.background
-    ? { background: (gradientStyle.background as string).replace('to bottom', 'to top') }
+    ? { background: (gradientStyle.background as string).replace('to top', 'to bottom') }
     : undefined;
 
   return (

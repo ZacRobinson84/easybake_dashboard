@@ -1,4 +1,39 @@
+import { useRef, useState } from 'react';
+import ColorThief from 'colorthief';
 import { Gamepad2, ThumbsUp } from 'lucide-react';
+
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return [h, s, l];
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [
+    Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+    Math.round(hue2rgb(p, q, h) * 255),
+    Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+  ];
+}
 
 interface GameCardProps {
   name: string;
@@ -15,15 +50,41 @@ interface GameCardProps {
 }
 
 export default function GameCard({ name, coverUrl, platforms, steamAppId, websiteUrl, steamReviews }: GameCardProps) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
+
+  const handleImageLoad = () => {
+    const img = imgRef.current;
+    if (!img) return;
+    try {
+      const colorThief = new ColorThief();
+      const [r, g, b] = colorThief.getColor(img);
+      const [h, s] = rgbToHsl(r, g, b);
+      const compH = (h + 0.5) % 1;
+      const [r1, g1, b1] = hslToRgb(compH, Math.min(s, 0.5), 0.82);
+      const [r2, g2, b2] = hslToRgb(compH, Math.min(s, 0.6), 0.68);
+      setGradientStyle({
+        background: `linear-gradient(to bottom, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))`,
+      });
+    } catch {
+      // silently ignore — fallback to default white
+    }
+  };
+
   const href = steamAppId
     ? `https://store.steampowered.com/app/${steamAppId}`
     : websiteUrl ?? `https://store.steampowered.com/search/?term=${encodeURIComponent(name)}`;
+
+  const hasGradient = !!gradientStyle;
 
   const content = (
     <>
       <div className="overflow-hidden rounded-t-lg bg-gray-100">
         {coverUrl ? (
           <img
+            ref={imgRef}
+            crossOrigin="anonymous"
+            onLoad={handleImageLoad}
             src={coverUrl}
             alt={name}
             className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
@@ -34,14 +95,14 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
           </div>
         )}
       </div>
-      <div className="p-3">
-        <h3 className="line-clamp-2 text-sm font-semibold text-gray-900">{name}</h3>
+      <div className="flex-1 p-3" style={gradientStyle}>
+        <h3 className={`line-clamp-2 text-sm font-semibold ${hasGradient ? 'text-white' : 'text-gray-900'}`}>{name}</h3>
         {platforms.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {platforms.map((platform) => (
               <span
                 key={platform}
-                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                className={`rounded-full px-2 py-0.5 text-xs ${hasGradient ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}
               >
                 {platform}
               </span>
@@ -49,10 +110,10 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
           </div>
         )}
         {steamReviews && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+          <div className={`mt-2 flex items-center gap-1 text-xs ${hasGradient ? 'text-white/80' : 'text-gray-500'}`}>
             <ThumbsUp className="h-3 w-3" />
             <span>{steamReviews.totalReviews.toLocaleString()} reviews</span>
-            <span className="text-gray-400">·</span>
+            <span className={hasGradient ? 'text-white/60' : 'text-gray-400'}>·</span>
             <span>{steamReviews.reviewScoreDesc}</span>
           </div>
         )}
@@ -65,7 +126,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
     >
       {content}
     </a>

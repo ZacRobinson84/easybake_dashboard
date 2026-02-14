@@ -3,10 +3,12 @@ import express from 'express';
 import cors from 'cors';
 import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews } from './steam.ts';
+import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography } from './tmdb.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
 const clientId = process.env['TWITCH_CLIENT_ID'];
 const clientSecret = process.env['TWITCH_CLIENT_SECRET'];
+const tmdbApiKey = process.env['TMDB_API_KEY'];
 
 if (!clientId || !clientSecret) {
   console.error('Missing required environment variables: TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET');
@@ -53,6 +55,60 @@ app.get('/api/gaming/releases', async (_req, res) => {
     console.error('Error fetching releases:', message);
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch game releases' });
+  }
+});
+
+app.get('/api/movies/upcoming', async (_req, res) => {
+  if (!tmdbApiKey) {
+    res.status(500).json({ error: 'TMDB_API_KEY not configured' });
+    return;
+  }
+  try {
+    console.log('Fetching upcoming Friday movies from TMDB...');
+    const movies = await fetchUpcomingFridayMovies(tmdbApiKey);
+    console.log(`Got ${movies.length} movies from TMDB`);
+    res.json(movies);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching movies:', message);
+    res.status(500).json({ error: 'Failed to fetch movie releases' });
+  }
+});
+
+app.get('/api/movies/now-playing', async (_req, res) => {
+  if (!tmdbApiKey) {
+    res.status(500).json({ error: 'TMDB_API_KEY not configured' });
+    return;
+  }
+  try {
+    console.log('Fetching now-playing movies from TMDB...');
+    const movies = await fetchNowPlayingMovies(tmdbApiKey);
+    console.log(`Got ${movies.length} now-playing movies from TMDB`);
+    res.json(movies);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching now-playing movies:', message);
+    res.status(500).json({ error: 'Failed to fetch now-playing movies' });
+  }
+});
+
+app.get('/api/movies/director/:personId/filmography', async (req, res) => {
+  if (!tmdbApiKey) {
+    res.status(500).json({ error: 'TMDB_API_KEY not configured' });
+    return;
+  }
+  const personId = Number(req.params['personId']);
+  if (!Number.isFinite(personId) || personId <= 0) {
+    res.status(400).json({ error: 'Invalid personId' });
+    return;
+  }
+  try {
+    const films = await fetchDirectorFilmography(tmdbApiKey, personId);
+    res.json(films);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching filmography:', message);
+    res.status(500).json({ error: 'Failed to fetch filmography' });
   }
 });
 

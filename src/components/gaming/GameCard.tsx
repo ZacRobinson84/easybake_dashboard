@@ -94,7 +94,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
           </div>
         )}
       </div>
-      <div className="flex-1 p-3" style={gradientStyle}>
+      <div className="flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
         <h3 className={`line-clamp-2 text-sm font-semibold ${hasGradient ? 'text-white' : 'text-gray-900'}`}>{name}</h3>
         {platforms.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">

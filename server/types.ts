@@ -44,3 +44,23 @@ export interface SteamReviewSummary {
 export interface GameReleaseWithReviews extends GameRelease {
   steamReviews: SteamReviewSummary | null;
 }
+
+export interface MovieRelease {
+  id: number;
+  title: string;
+  posterUrl: string | null;
+  releaseDate: string;
+  director: string | null;
+  directorId: number | null;
+  cast: string[];
+  overview: string;
+  tmdbUrl: string;
+  fridayDate: string;
+  revenue: number | null;
+}
+
+export interface DirectorFilm {
+  title: string;
+  year: string;
+  posterUrl: string | null;
+}

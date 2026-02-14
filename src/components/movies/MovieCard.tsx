@@ -153,7 +153,7 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
           </div>
         )}
       </div>
-      <div className="flex-1 p-3" style={gradientStyle}>
+      <div className="flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
         <a
           href={tmdbUrl}
           target="_blank"

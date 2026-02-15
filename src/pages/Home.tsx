@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Loader2, MapPin } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Loader2, MapPin, Film, Search, X } from 'lucide-react';
 
 interface ForecastEntry {
   dt: number;
@@ -16,6 +16,20 @@ interface DaySummary {
   description: string;
 }
 
+interface MovieSearchResult {
+  id: number;
+  title: string;
+  posterUrl: string | null;
+  releaseDate: string;
+}
+
+interface WatchedMovie {
+  id: number;
+  title: string;
+  posterUrl: string | null;
+  addedAt: string;
+}
+
 const FALLBACK_LAT = 44.98;
 const FALLBACK_LON = -64.13;
 
@@ -24,6 +38,15 @@ export default function Home() {
   const [cityName, setCityName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Watched movies state
+  const [watchedMovies, setWatchedMovies] = useState<WatchedMovie[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MovieSearchResult[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchWeather = (lat: number, lon: number) => {
@@ -58,7 +81,7 @@ export default function Home() {
           const grouped = new Map<string, ForecastEntry[]>();
           for (const entry of data.forecast.list) {
             const key = toLocalDate(new Date(entry.dt * 1000));
-            if (key === today) continue; // skip today, we have current weather
+            if (key === today) continue;
             if (!grouped.has(key)) grouped.set(key, []);
             grouped.get(key)!.push(entry);
           }
@@ -104,10 +127,71 @@ export default function Home() {
     }
   }, []);
 
+  // Fetch watched movies on mount
+  useEffect(() => {
+    fetch('/api/movies/watched')
+      .then((res) => res.json())
+      .then(setWatchedMovies)
+      .catch(() => {});
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSearch = useCallback((q: string) => {
+    setSearchQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q.trim()) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    setSearching(true);
+    debounceRef.current = setTimeout(() => {
+      fetch(`/api/movies/search?q=${encodeURIComponent(q.trim())}`)
+        .then((res) => res.json())
+        .then((results: MovieSearchResult[]) => {
+          setSearchResults(results.slice(0, 8));
+          setShowDropdown(true);
+          setSearching(false);
+        })
+        .catch(() => setSearching(false));
+    }, 400);
+  }, []);
+
+  const addMovie = (movie: MovieSearchResult) => {
+    fetch('/api/movies/watched', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: movie.id, title: movie.title, posterUrl: movie.posterUrl, releaseDate: movie.releaseDate }),
+    })
+      .then((res) => res.json())
+      .then(setWatchedMovies)
+      .catch(() => {});
+    setShowDropdown(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const removeMovie = (id: number) => {
+    fetch(`/api/movies/watched/${id}`, { method: 'DELETE' })
+      .then((res) => res.json())
+      .then(setWatchedMovies)
+      .catch(() => {});
+  };
+
   const containerStyle = { clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' };
 
   return (
-    <div className="p-6 md:p-10">
+    <div className="p-6 md:p-10 space-y-6">
       {/* Weather Widget */}
       <div className="max-w-xl rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
         <div className="mb-3 flex items-center gap-3">
@@ -167,6 +251,92 @@ export default function Home() {
               </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Movies Watched Widget */}
+      <div className="max-w-2xl rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Film className="h-4 w-4 text-white/50" />
+            <h2 className="text-base font-semibold text-white/70 font-nunito-black">
+              Movies Watched in 2026
+            </h2>
+          </div>
+          <div className="h-px flex-1 bg-white/15 mr-2" />
+        </div>
+
+        {/* Search bar */}
+        <div className="relative mb-4" ref={dropdownRef}>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search for a movie..."
+              className="w-full rounded-lg bg-white/10 py-2 pl-9 pr-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-white/25"
+            />
+            {searching && (
+              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/40" />
+            )}
+          </div>
+
+          {/* Search results dropdown */}
+          {showDropdown && searchResults.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full rounded-lg bg-[#2a1f1a] border border-white/10 shadow-xl max-h-72 overflow-y-auto">
+              {searchResults.map((movie) => (
+                <button
+                  key={movie.id}
+                  onClick={() => addMovie(movie)}
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-white/10 transition-colors"
+                >
+                  {movie.posterUrl ? (
+                    <img src={movie.posterUrl} alt="" className="h-12 w-8 rounded object-cover shrink-0" />
+                  ) : (
+                    <div className="h-12 w-8 rounded bg-white/10 shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-sm text-white truncate">{movie.title}</div>
+                    <div className="text-xs text-white/40">
+                      {movie.releaseDate ? movie.releaseDate.slice(0, 4) : ''}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Poster grid */}
+        {watchedMovies.length === 0 ? (
+          <div className="py-6 text-center text-sm text-white/30">
+            No movies added yet. Search above to add movies you've watched.
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {watchedMovies.map((movie) => (
+              <div key={movie.id} className="group relative">
+                <button
+                  onClick={() => removeMovie(movie.id)}
+                  className="absolute -right-1.5 -top-1.5 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {movie.posterUrl ? (
+                  <img
+                    src={movie.posterUrl}
+                    alt={movie.title}
+                    className="w-full rounded-lg object-cover aspect-[2/3]"
+                  />
+                ) : (
+                  <div className="w-full rounded-lg bg-white/10 aspect-[2/3] flex items-center justify-center">
+                    <Film className="h-8 w-8 text-white/20" />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -3,7 +3,9 @@ import express from 'express';
 import cors from 'cors';
 import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews } from './steam.ts';
-import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography } from './tmdb.ts';
+import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, searchMovies } from './tmdb.ts';
+import fs from 'fs';
+import path from 'path';
 import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
 import { fetchAllArtistPopularity, fetchTopCharts } from './lastfm.ts';
 import {
@@ -309,6 +311,82 @@ app.get('/api/weather/forecast', async (req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching weather:', message);
     res.status(500).json({ error: 'Failed to fetch weather forecast' });
+  }
+});
+
+// --- Watched Movies ---
+
+interface WatchedMovie {
+  id: number;
+  title: string;
+  posterUrl: string | null;
+  releaseDate: string;
+  addedAt: string;
+}
+
+const WATCHED_FILE = path.join(process.cwd(), 'data', 'watched-movies.json');
+
+function readWatchedMovies(): WatchedMovie[] {
+  try {
+    return JSON.parse(fs.readFileSync(WATCHED_FILE, 'utf-8'));
+  } catch {
+    return [];
+  }
+}
+
+function writeWatchedMovies(movies: WatchedMovie[]): void {
+  const dir = path.dirname(WATCHED_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(WATCHED_FILE, JSON.stringify(movies, null, 2));
+}
+
+app.get('/api/movies/watched', (_req, res) => {
+  const movies = readWatchedMovies();
+  movies.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''));
+  res.json(movies);
+});
+
+app.post('/api/movies/watched', (req, res) => {
+  const { id, title, posterUrl, releaseDate } = req.body;
+  if (!id || !title) {
+    res.status(400).json({ error: 'Missing id or title' });
+    return;
+  }
+  const movies = readWatchedMovies();
+  if (movies.some((m) => m.id === id)) {
+    res.json(movies);
+    return;
+  }
+  movies.push({ id, title, posterUrl: posterUrl ?? null, releaseDate: releaseDate ?? '', addedAt: new Date().toISOString() });
+  writeWatchedMovies(movies);
+  res.json(movies);
+});
+
+app.delete('/api/movies/watched/:id', (req, res) => {
+  const id = Number(req.params['id']);
+  let movies = readWatchedMovies();
+  movies = movies.filter((m) => m.id !== id);
+  writeWatchedMovies(movies);
+  res.json(movies);
+});
+
+app.get('/api/movies/search', async (req, res) => {
+  if (!tmdbApiKey) {
+    res.status(500).json({ error: 'TMDB_API_KEY not configured' });
+    return;
+  }
+  const q = req.query['q'] as string | undefined;
+  if (!q) {
+    res.status(400).json({ error: 'Missing q parameter' });
+    return;
+  }
+  try {
+    const results = await searchMovies(tmdbApiKey, q);
+    res.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error searching movies:', message);
+    res.status(500).json({ error: 'Failed to search movies' });
   }
 });
 

@@ -171,6 +171,30 @@ export async function fetchNowPlayingMovies(apiKey: string): Promise<MovieReleas
   return results;
 }
 
+export interface MovieSearchResult {
+  id: number;
+  title: string;
+  posterUrl: string | null;
+  releaseDate: string;
+}
+
+export async function searchMovies(apiKey: string, query: string): Promise<MovieSearchResult[]> {
+  const url = new URL('https://api.themoviedb.org/3/search/movie');
+  url.searchParams.set('api_key', apiKey);
+  url.searchParams.set('query', query);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`TMDB search failed: ${res.status}`);
+  const data = (await res.json()) as { results: TMDBMovie[] };
+
+  return data.results.map((movie) => ({
+    id: movie.id,
+    title: movie.title,
+    posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w300${movie.poster_path}` : null,
+    releaseDate: movie.release_date,
+  }));
+}
+
 export async function fetchDirectorFilmography(apiKey: string, personId: number): Promise<DirectorFilm[]> {
   const url = `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${apiKey}`;
   const res = await fetch(url);

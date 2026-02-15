@@ -19,6 +19,7 @@ dist-ssr
 .idea
 .DS_Store
 .spotify-tokens.json
+data/
 *.suo
 *.ntvs*
 *.njsproj

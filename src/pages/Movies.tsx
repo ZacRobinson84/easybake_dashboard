@@ -14,6 +14,7 @@ interface MovieRelease {
   tmdbUrl: string;
   fridayDate: string;
   revenue: number | null;
+  isHorror?: boolean;
 }
 
 type Tab = 'releases' | 'in-theatres';
@@ -184,6 +185,7 @@ export default function Movies() {
               directorId={movie.directorId}
               cast={movie.cast}
               tmdbUrl={movie.tmdbUrl}
+              isHorror={movie.isHorror}
             />
           ))}
         </div>

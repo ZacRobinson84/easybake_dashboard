@@ -35,6 +35,7 @@ interface TMDBMovie {
   release_date: string;
   overview: string;
   popularity: number;
+  genre_ids: number[];
 }
 
 interface TMDBCreditsResponse {
@@ -91,6 +92,7 @@ export async function fetchUpcomingFridayMovies(apiKey: string): Promise<MovieRe
       tmdbUrl: `https://www.themoviedb.org/movie/${movie.id}`,
       fridayDate: friday,
       revenue: null,
+      isHorror: movie.genre_ids.includes(27),
     };
   });
 }
@@ -106,9 +108,16 @@ export async function fetchNowPlayingMovies(apiKey: string): Promise<MovieReleas
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`TMDB now_playing failed: ${res.status}`);
-  const data = (await res.json()) as { results: TMDBMovie[] };
+  const data = (await res.json()) as { results: TMDBMovie[]; total_pages: number };
 
-  const movies = data.results;
+  const pageFetches = [];
+  const maxPages = Math.min(data.total_pages, 10);
+  for (let page = 2; page <= maxPages; page++) {
+    url.searchParams.set('page', String(page));
+    pageFetches.push(fetch(url.toString()).then(r => r.json()));
+  }
+  const extraPages = await Promise.all(pageFetches);
+  const movies = [...data.results, ...extraPages.flatMap((p: any) => p.results)] as TMDBMovie[];
 
   const detailResults = await Promise.allSettled(
     movies.map(async (movie) => {
@@ -129,9 +138,6 @@ export async function fetchNowPlayingMovies(apiKey: string): Promise<MovieReleas
     })
   );
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
   const results = movies.map((movie, i): MovieRelease => {
     const detailResult = detailResults[i];
     const detail = detailResult?.status === 'fulfilled' ? detailResult.value : { director: null, directorId: null, cast: [], revenue: null };
@@ -147,14 +153,19 @@ export async function fetchNowPlayingMovies(apiKey: string): Promise<MovieReleas
       tmdbUrl: `https://www.themoviedb.org/movie/${movie.id}`,
       fridayDate: '',
       revenue: detail.revenue,
+      popularity: movie.popularity,
+      isHorror: movie.genre_ids.includes(27),
     };
   });
 
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
   results.sort((a, b) => {
-    const aOld = new Date(a.releaseDate) < thirtyDaysAgo ? 1 : 0;
-    const bOld = new Date(b.releaseDate) < thirtyDaysAgo ? 1 : 0;
+    const aOld = new Date(a.releaseDate) < sixMonthsAgo ? 1 : 0;
+    const bOld = new Date(b.releaseDate) < sixMonthsAgo ? 1 : 0;
     if (aOld !== bOld) return aOld - bOld;
-    return (b.revenue ?? 0) - (a.revenue ?? 0);
+    return (b.popularity ?? 0) - (a.popularity ?? 0);
   });
 
   return results;

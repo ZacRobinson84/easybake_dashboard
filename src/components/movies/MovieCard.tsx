@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import ColorThief from 'colorthief';
-import { Film, X } from 'lucide-react';
+import { Film, Skull, X } from 'lucide-react';
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255;
@@ -48,9 +48,10 @@ interface MovieCardProps {
   directorId: number | null;
   cast: string[];
   tmdbUrl: string;
+  isHorror?: boolean;
 }
 
-export default function MovieCard({ title, posterUrl, director, directorId, cast, tmdbUrl }: MovieCardProps) {
+export default function MovieCard({ title, posterUrl, director, directorId, cast, tmdbUrl, isHorror }: MovieCardProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
   const [flipped, setFlipped] = useState(false);
@@ -153,7 +154,8 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
           </div>
         )}
       </div>
-      <div className="flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
+      <div className="relative flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
+        {isHorror && <Skull className="absolute top-1.5 right-1.5 h-5 w-5 text-white" />}
         <a
           href={tmdbUrl}
           target="_blank"

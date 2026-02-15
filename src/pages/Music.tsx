@@ -12,6 +12,7 @@ interface AlbumRelease {
   fridayDate: string;
   artistListeners?: number | null;
   inSpotifyLibrary?: boolean;
+  genre?: string;
 }
 
 export default function Music() {
@@ -56,6 +57,8 @@ export default function Music() {
 
   const spotifyAlbums = albums.filter((a) => a.inSpotifyLibrary);
   const otherAlbums = albums.filter((a) => !a.inSpotifyLibrary);
+
+  const capitalize = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
   const gridClasses = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10';
 
@@ -138,17 +141,77 @@ export default function Music() {
               {spotifyAlbums.length > 0 && (
                 <h2 className="mb-3 text-lg font-semibold text-gray-400">All Upcoming</h2>
               )}
-              <div className={gridClasses}>
-                {otherAlbums.map((album) => (
-                  <AlbumCard
-                    key={album.id}
-                    title={album.title}
-                    artist={album.artist}
-                    coverUrl={album.coverUrl}
-                    type={album.type}
-                  />
-                ))}
-              </div>
+              {(() => {
+                const genreGroups = new Map<string, AlbumRelease[]>();
+                for (const album of otherAlbums) {
+                  const genre = album.genre || 'Other';
+                  if (!genreGroups.has(genre)) genreGroups.set(genre, []);
+                  genreGroups.get(genre)!.push(album);
+                }
+                const genreOrder = [
+                  'punk', 'hardcore', 'metal', 'death metal', 'electronic', 'house',
+                  'hip hop', 'rap', 'indie', 'indie rock', 'indie pop', 'pop', 'rock',
+                  'screamo', 'shoegaze', 'uk rap',
+                ];
+                const sortedGenres = [...genreGroups.keys()].sort((a, b) => {
+                  if (a === 'Other') return 1;
+                  if (b === 'Other') return -1;
+                  const aIdx = genreOrder.indexOf(a.toLowerCase());
+                  const bIdx = genreOrder.indexOf(b.toLowerCase());
+                  if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                  if (aIdx !== -1) return -1;
+                  if (bIdx !== -1) return 1;
+                  return a.localeCompare(b);
+                });
+                return (
+                  <>
+                    {/* Mobile: single full-width grid */}
+                    <div className="md:hidden">
+                      {sortedGenres.map((genre) => {
+                        const albums = genreGroups.get(genre)!;
+                        return (
+                          <div key={genre} className="mb-6">
+                            <h2 className="mb-3 text-base font-semibold text-gray-500">{capitalize(genre)}</h2>
+                            <div className={gridClasses}>
+                              {albums.map((album) => (
+                                <AlbumCard
+                                  key={album.id}
+                                  title={album.title}
+                                  artist={album.artist}
+                                  coverUrl={album.coverUrl}
+                                  type={album.type}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Desktop: genres side by side */}
+                    <div className="hidden md:flex md:flex-wrap md:gap-x-6">
+                      {sortedGenres.map((genre) => {
+                        const albums = genreGroups.get(genre)!;
+                        return (
+                          <div key={genre} className="mb-6">
+                            <h2 className="mb-3 text-base font-semibold text-gray-500">{capitalize(genre)}</h2>
+                            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(albums.length, 10)}, 8rem)` }}>
+                              {albums.map((album) => (
+                                <AlbumCard
+                                  key={album.id}
+                                  title={album.title}
+                                  artist={album.artist}
+                                  coverUrl={album.coverUrl}
+                                  type={album.type}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </>

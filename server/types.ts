@@ -57,6 +57,8 @@ export interface MovieRelease {
   tmdbUrl: string;
   fridayDate: string;
   revenue: number | null;
+  popularity?: number;
+  isHorror?: boolean;
 }
 
 export interface DirectorFilm {
@@ -75,4 +77,5 @@ export interface AlbumRelease {
   fridayDate: string;
   artistListeners?: number | null;
   inSpotifyLibrary?: boolean;
+  genre?: string;
 }

@@ -1,6 +1,11 @@
 import type { AlbumRelease } from './types.ts';
 
-const cache = new Map<string, number | null>();
+interface ArtistInfo {
+  listeners: number | null;
+  genre: string | null;
+}
+
+const cache = new Map<string, ArtistInfo>();
 const requestTimestamps: number[] = [];
 
 async function rateLimit(): Promise<void> {
@@ -16,11 +21,13 @@ async function rateLimit(): Promise<void> {
   requestTimestamps.push(Date.now());
 }
 
-async function fetchArtistListeners(apiKey: string, artist: string): Promise<number | null> {
+async function fetchArtistInfo(apiKey: string, artist: string): Promise<ArtistInfo> {
   const cacheKey = artist.toLowerCase();
   if (cache.has(cacheKey)) {
     return cache.get(cacheKey)!;
   }
+
+  const nullResult: ArtistInfo = { listeners: null, genre: null };
 
   try {
     await rateLimit();
@@ -35,29 +42,36 @@ async function fetchArtistListeners(apiKey: string, artist: string): Promise<num
     clearTimeout(timeout);
 
     if (!res.ok) {
-      cache.set(cacheKey, null);
-      return null;
+      cache.set(cacheKey, nullResult);
+      return nullResult;
     }
 
     const data = (await res.json()) as {
-      artist?: { stats?: { listeners?: string } };
+      artist?: {
+        stats?: { listeners?: string };
+        tags?: { tag?: Array<{ name?: string }> };
+      };
     };
 
     const listeners = data.artist?.stats?.listeners;
     const count = listeners ? parseInt(listeners, 10) : null;
-    const result = count !== null && !isNaN(count) ? count : null;
+    const listenersResult = count !== null && !isNaN(count) ? count : null;
+
+    const topTag = data.artist?.tags?.tag?.[0]?.name ?? null;
+
+    const result: ArtistInfo = { listeners: listenersResult, genre: topTag };
     cache.set(cacheKey, result);
     return result;
   } catch {
-    cache.set(cacheKey, null);
-    return null;
+    cache.set(cacheKey, nullResult);
+    return nullResult;
   }
 }
 
 export async function fetchAllArtistPopularity(
   apiKey: string,
   albums: AlbumRelease[],
-): Promise<Map<string, number>> {
+): Promise<Map<string, { listeners: number | null; genre: string | null }>> {
   const seen = new Set<string>();
   const uniqueArtists: string[] = [];
   for (const album of albums) {
@@ -70,15 +84,15 @@ export async function fetchAllArtistPopularity(
 
   const results = await Promise.allSettled(
     uniqueArtists.map(async (artist) => {
-      const listeners = await fetchArtistListeners(apiKey, artist);
-      return { artist, listeners };
+      const info = await fetchArtistInfo(apiKey, artist);
+      return { artist, info };
     }),
   );
 
-  const map = new Map<string, number>();
+  const map = new Map<string, { listeners: number | null; genre: string | null }>();
   for (const result of results) {
-    if (result.status === 'fulfilled' && result.value.listeners !== null) {
-      map.set(result.value.artist, result.value.listeners);
+    if (result.status === 'fulfilled') {
+      map.set(result.value.artist, result.value.info);
     }
   }
   return map;

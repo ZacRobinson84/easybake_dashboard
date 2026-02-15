@@ -193,7 +193,9 @@ app.get('/api/music/upcoming', async (_req, res) => {
       console.log(`Got popularity data for ${popularityMap.size} artists`);
 
       for (const album of albums) {
-        album.artistListeners = popularityMap.get(album.artist) ?? null;
+        const info = popularityMap.get(album.artist);
+        album.artistListeners = info?.listeners ?? null;
+        album.genre = info?.genre ?? undefined;
       }
 
       albums.sort((a, b) => {

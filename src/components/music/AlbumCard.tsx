@@ -85,7 +85,7 @@ export default function AlbumCard({ title, artist, coverUrl, type }: AlbumCardPr
           </div>
         )}
       </div>
-      <div className="flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
+      <div className="h-20 border-t-2 border-white/20 p-3" style={gradientStyle}>
         <p className={`line-clamp-2 text-sm font-semibold ${hasGradient ? 'text-white' : 'text-gray-900'}`}>
           {title}
         </p>

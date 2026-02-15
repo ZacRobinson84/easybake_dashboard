@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import ColorThief from 'colorthief';
-import { Music2 } from 'lucide-react';
+import { Music2, Play, Pause, Loader2, VolumeX } from 'lucide-react';
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255;
@@ -35,14 +35,18 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   ];
 }
 
+export type PlaybackState = 'idle' | 'loading' | 'playing' | 'no-preview';
+
 interface AlbumCardProps {
   title: string;
   artist: string;
   coverUrl: string | null;
   type: string;
+  playbackState: PlaybackState;
+  onTogglePlay: (artist: string) => void;
 }
 
-export default function AlbumCard({ title, artist, coverUrl, type }: AlbumCardProps) {
+export default function AlbumCard({ title, artist, coverUrl, type, playbackState, onTogglePlay }: AlbumCardProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
   const [imgFailed, setImgFailed] = useState(false);
@@ -65,9 +69,13 @@ export default function AlbumCard({ title, artist, coverUrl, type }: AlbumCardPr
   };
 
   const hasGradient = !!gradientStyle;
+  const showOverlay = playbackState !== 'idle';
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
+    <div
+      className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg cursor-pointer"
+      onClick={() => onTogglePlay(artist)}
+    >
       <div className="relative overflow-hidden rounded-t-lg bg-gray-100 aspect-[1/1]">
         {coverUrl && !imgFailed ? (
           <img
@@ -82,6 +90,18 @@ export default function AlbumCard({ title, artist, coverUrl, type }: AlbumCardPr
         ) : (
           <div className="flex w-full h-full items-center justify-center text-gray-400">
             <Music2 className="h-12 w-12" />
+          </div>
+        )}
+        {showOverlay && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            {playbackState === 'loading' && <Loader2 className="h-10 w-10 text-white animate-spin" />}
+            {playbackState === 'playing' && <Pause className="h-10 w-10 text-white" />}
+            {playbackState === 'no-preview' && <VolumeX className="h-10 w-10 text-white/80" />}
+          </div>
+        )}
+        {!showOverlay && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/30 group-hover:opacity-100">
+            <Play className="h-10 w-10 text-white" />
           </div>
         )}
       </div>

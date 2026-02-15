@@ -127,6 +127,29 @@ export async function ensureValidToken(clientId: string, clientSecret: string): 
   return refreshAccessToken(clientId, clientSecret);
 }
 
+export async function fetchArtistTopPreview(
+  artistName: string,
+): Promise<{ trackName: string; previewUrl: string } | null> {
+  // Use iTunes Search API — free, no auth, reliable 30-second previews
+  const res = await fetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=song&limit=10&attribute=artistTerm`,
+  );
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    results: Array<{ trackName: string; previewUrl?: string; artistName: string }>;
+  };
+
+  // Find first result with a preview URL whose artist name matches
+  const nameLower = artistName.toLowerCase();
+  const track = data.results.find(
+    (t) => t.previewUrl && t.artistName.toLowerCase() === nameLower,
+  ) ?? data.results.find((t) => t.previewUrl);
+
+  if (!track?.previewUrl) return null;
+  return { trackName: track.trackName, previewUrl: track.previewUrl };
+}
+
 export async function fetchSpotifyArtistNames(accessToken: string): Promise<Set<string>> {
   const artistNames = new Set<string>();
 

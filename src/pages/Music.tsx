@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Music2, Loader2 } from 'lucide-react';
 import AlbumCard from '../components/music/AlbumCard';
+import type { PlaybackState } from '../components/music/AlbumCard';
 
 interface AlbumRelease {
   id: string;
@@ -21,6 +22,85 @@ export default function Music() {
   const [error, setError] = useState<string | null>(null);
   const [fridayLabel, setFridayLabel] = useState('');
   const [spotifyConnected, setSpotifyConnected] = useState(false);
+
+  // Audio playback state
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [currentArtist, setCurrentArtist] = useState<string | null>(null);
+  const [artistStates, setArtistStates] = useState<Map<string, PlaybackState>>(new Map());
+
+  const getPlaybackState = useCallback(
+    (artist: string): PlaybackState => artistStates.get(artist) ?? 'idle',
+    [artistStates],
+  );
+
+  const setArtistState = useCallback((artist: string, state: PlaybackState) => {
+    setArtistStates((prev) => {
+      const next = new Map(prev);
+      if (state === 'idle') {
+        next.delete(artist);
+      } else {
+        next.set(artist, state);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleTogglePlay = useCallback(async (artist: string) => {
+    // If clicking the currently playing artist, toggle pause/play
+    if (currentArtist === artist) {
+      const audio = audioRef.current;
+      if (audio) {
+        if (audio.paused) {
+          audio.play();
+          setArtistState(artist, 'playing');
+        } else {
+          audio.pause();
+          setArtistState(artist, 'idle');
+          setCurrentArtist(null);
+        }
+      }
+      return;
+    }
+
+    // Stop any current playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+    if (currentArtist) {
+      setArtistState(currentArtist, 'idle');
+    }
+
+    setCurrentArtist(artist);
+    setArtistState(artist, 'loading');
+
+    try {
+      const res = await fetch(`/api/spotify/preview?artist=${encodeURIComponent(artist)}`);
+      const data = await res.json() as { trackName?: string; previewUrl?: string; error?: string };
+
+      if (!data.previewUrl) {
+        setArtistState(artist, 'no-preview');
+        setCurrentArtist(null);
+        setTimeout(() => setArtistState(artist, 'idle'), 2000);
+        return;
+      }
+
+      const audio = new Audio(data.previewUrl);
+      audioRef.current = audio;
+
+      audio.addEventListener('ended', () => {
+        setArtistState(artist, 'idle');
+        setCurrentArtist(null);
+      });
+
+      await audio.play();
+      setArtistState(artist, 'playing');
+    } catch {
+      setArtistState(artist, 'no-preview');
+      setCurrentArtist(null);
+      setTimeout(() => setArtistState(artist, 'idle'), 2000);
+    }
+  }, [currentArtist, setArtistState]);
 
   useEffect(() => {
     fetch('/api/spotify/status')
@@ -55,6 +135,16 @@ export default function Music() {
       });
   }, []);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
+  }, []);
+
   const spotifyAlbums = albums.filter((a) => a.inSpotifyLibrary);
   const otherAlbums = albums.filter((a) => !a.inSpotifyLibrary);
 
@@ -64,6 +154,18 @@ export default function Music() {
   const capitalize = (s: string) => genreRenames[s.toLowerCase()] ?? s.replace(/\b\w/g, (c) => c.toUpperCase());
 
   const gridClasses = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10';
+
+  const renderAlbumCard = (album: AlbumRelease) => (
+    <AlbumCard
+      key={album.id}
+      title={album.title}
+      artist={album.artist}
+      coverUrl={album.coverUrl}
+      type={album.type}
+      playbackState={getPlaybackState(album.artist)}
+      onTogglePlay={handleTogglePlay}
+    />
+  );
 
   return (
     <div className="p-6 md:p-10">
@@ -126,15 +228,7 @@ export default function Music() {
             <div className="mb-8">
               <h2 className="mb-3 inline-block rounded-lg bg-[#8B5E3C] px-4 py-1.5 text-lg font-semibold text-white">From Your Artists</h2>
               <div className={gridClasses}>
-                {spotifyAlbums.map((album) => (
-                  <AlbumCard
-                    key={album.id}
-                    title={album.title}
-                    artist={album.artist}
-                    coverUrl={album.coverUrl}
-                    type={album.type}
-                  />
-                ))}
+                {spotifyAlbums.map(renderAlbumCard)}
               </div>
             </div>
           )}
@@ -172,20 +266,12 @@ export default function Music() {
                     {/* Mobile: single full-width grid */}
                     <div className="md:hidden">
                       {sortedGenres.map((genre) => {
-                        const albums = genreGroups.get(genre)!;
+                        const genreAlbums = genreGroups.get(genre)!;
                         return (
                           <div key={genre} className="mb-6 rounded-xl bg-[#C88B4A]/15 p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
                             <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-[#8B5E3C] shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
                             <div className={gridClasses}>
-                              {albums.map((album) => (
-                                <AlbumCard
-                                  key={album.id}
-                                  title={album.title}
-                                  artist={album.artist}
-                                  coverUrl={album.coverUrl}
-                                  type={album.type}
-                                />
-                              ))}
+                              {genreAlbums.map(renderAlbumCard)}
                             </div>
                           </div>
                         );
@@ -194,20 +280,12 @@ export default function Music() {
                     {/* Desktop: genres side by side */}
                     <div className="hidden md:flex md:flex-wrap md:gap-x-6">
                       {sortedGenres.map((genre) => {
-                        const albums = genreGroups.get(genre)!;
+                        const genreAlbums = genreGroups.get(genre)!;
                         return (
                           <div key={genre} className={`mb-6 rounded-xl bg-[#C88B4A]/15 p-4${genre.toLowerCase() === 'other' ? ' w-full' : ''}`} style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
                             <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-[#8B5E3C] shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
-                            <div className="grid gap-3" style={{ gridTemplateColumns: genre.toLowerCase() === 'other' ? 'repeat(auto-fill, 8rem)' : `repeat(${Math.min(albums.length, 10)}, 8rem)` }}>
-                              {albums.map((album) => (
-                                <AlbumCard
-                                  key={album.id}
-                                  title={album.title}
-                                  artist={album.artist}
-                                  coverUrl={album.coverUrl}
-                                  type={album.type}
-                                />
-                              ))}
+                            <div className="grid gap-3" style={{ gridTemplateColumns: genre.toLowerCase() === 'other' ? 'repeat(auto-fill, 8rem)' : `repeat(${Math.min(genreAlbums.length, 10)}, 8rem)` }}>
+                              {genreAlbums.map(renderAlbumCard)}
                             </div>
                           </div>
                         );

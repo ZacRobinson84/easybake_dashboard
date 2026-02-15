@@ -13,6 +13,7 @@ import {
   fetchSpotifyArtistNames,
   isAuthenticated,
   clearTokens,
+  fetchArtistTopPreview,
 } from './spotify.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
@@ -87,6 +88,27 @@ app.get('/api/spotify/status', (_req, res) => {
 app.post('/api/spotify/logout', (_req, res) => {
   clearTokens();
   res.json({ success: true });
+});
+
+app.get('/api/spotify/preview', async (req, res) => {
+  const artist = req.query['artist'] as string | undefined;
+  if (!artist) {
+    res.status(400).json({ error: 'Missing artist parameter' });
+    return;
+  }
+
+  try {
+    const result = await fetchArtistTopPreview(artist);
+    if (!result) {
+      res.json({ error: 'No preview available' });
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Preview fetch error:', message);
+    res.status(500).json({ error: 'Failed to fetch preview' });
+  }
 });
 
 app.get('/api/gaming/releases', async (_req, res) => {

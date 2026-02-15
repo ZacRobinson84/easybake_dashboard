@@ -6,12 +6,22 @@ import { fetchAllSteamReviews } from './steam.ts';
 import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography } from './tmdb.ts';
 import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
 import { fetchAllArtistPopularity } from './lastfm.ts';
+import {
+  getAuthUrl,
+  exchangeCodeForTokens,
+  ensureValidToken,
+  fetchSpotifyArtistNames,
+  isAuthenticated,
+  clearTokens,
+} from './spotify.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
 const clientId = process.env['TWITCH_CLIENT_ID'];
 const clientSecret = process.env['TWITCH_CLIENT_SECRET'];
 const tmdbApiKey = process.env['TMDB_API_KEY'];
 const lastfmApiKey = process.env['LASTFM_CLIENT_ID'];
+const spotifyClientId = process.env['SPOTIFY_CLIENT_ID'];
+const spotifyClientSecret = process.env['SPOTIFY_CLIENT_SECRET'];
 
 if (!clientId || !clientSecret) {
   console.error('Missing required environment variables: TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET');
@@ -22,6 +32,62 @@ if (!clientId || !clientSecret) {
 const app = express();
 
 app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(express.json());
+
+// --- Spotify OAuth routes ---
+
+let pendingSpotifyState: string | null = null;
+
+app.get('/api/spotify/login', (_req, res) => {
+  if (!spotifyClientId) {
+    res.status(500).json({ error: 'SPOTIFY_CLIENT_ID not configured' });
+    return;
+  }
+  const { url, state } = getAuthUrl(spotifyClientId);
+  pendingSpotifyState = state;
+  res.redirect(url);
+});
+
+app.get('/api/spotify/callback', async (req, res) => {
+  if (!spotifyClientId || !spotifyClientSecret) {
+    res.status(500).json({ error: 'Spotify credentials not configured' });
+    return;
+  }
+  const code = req.query['code'] as string | undefined;
+  const state = req.query['state'] as string | undefined;
+  const error = req.query['error'] as string | undefined;
+
+  if (error) {
+    console.error('Spotify auth error:', error);
+    res.redirect('http://127.0.0.1:5173/music');
+    return;
+  }
+
+  if (!code || !state || state !== pendingSpotifyState) {
+    res.status(400).json({ error: 'Invalid callback parameters' });
+    return;
+  }
+
+  pendingSpotifyState = null;
+
+  try {
+    await exchangeCodeForTokens(spotifyClientId, spotifyClientSecret, code);
+    res.redirect('http://127.0.0.1:5173/music');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Spotify token exchange error:', message);
+    res.status(500).json({ error: 'Failed to authenticate with Spotify' });
+  }
+});
+
+app.get('/api/spotify/status', (_req, res) => {
+  res.json({ authenticated: isAuthenticated() });
+});
+
+app.post('/api/spotify/logout', (_req, res) => {
+  clearTokens();
+  res.json({ success: true });
+});
 
 app.get('/api/gaming/releases', async (_req, res) => {
   try {
@@ -143,6 +209,24 @@ app.get('/api/music/upcoming', async (_req, res) => {
 
         return a.artist.localeCompare(b.artist);
       });
+    }
+
+    // Tag albums from Spotify library
+    if (spotifyClientId && spotifyClientSecret && isAuthenticated()) {
+      try {
+        const accessToken = await ensureValidToken(spotifyClientId, spotifyClientSecret);
+        const spotifyArtists = await fetchSpotifyArtistNames(accessToken);
+        console.log(`Got ${spotifyArtists.size} unique artists from Spotify`);
+
+        for (const album of albums) {
+          const artistParts = album.artist.split(',').map((s) => s.trim().toLowerCase());
+          if (artistParts.some((part) => spotifyArtists.has(part))) {
+            album.inSpotifyLibrary = true;
+          }
+        }
+      } catch (err) {
+        console.error('Spotify artist fetch error:', err instanceof Error ? err.message : err);
+      }
     }
 
     res.json(albums);

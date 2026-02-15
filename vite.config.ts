@@ -21,6 +21,7 @@ function serverReloadPlugin() {
 export default defineConfig({
   plugins: [react(), tailwindcss(), serverReloadPlugin()],
   server: {
+    host: '127.0.0.1',
     proxy: {
       '/api': 'http://localhost:3001',
     },

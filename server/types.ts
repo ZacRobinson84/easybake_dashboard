@@ -74,4 +74,5 @@ export interface AlbumRelease {
   type: string;
   fridayDate: string;
   artistListeners?: number | null;
+  inSpotifyLibrary?: boolean;
 }

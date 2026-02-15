@@ -18,6 +18,7 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 .DS_Store
+.spotify-tokens.json
 *.suo
 *.ntvs*
 *.njsproj

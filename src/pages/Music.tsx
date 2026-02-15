@@ -363,7 +363,7 @@ export default function Music() {
         <>
           {spotifyAlbums.length > 0 && (
             <div className="mb-8">
-              <h2 className="mb-3 inline-block rounded-lg bg-[#C88965] px-4 py-1.5 text-lg font-semibold text-white">From Your Artists</h2>
+              <h2 className="mb-3 inline-block rounded-lg bg-indigo-600/70 px-4 py-1.5 text-lg font-semibold text-white">From Your Artists</h2>
               <div className={gridClasses}>
                 {spotifyAlbums.map(renderAlbumCard)}
               </div>
@@ -373,7 +373,7 @@ export default function Music() {
           {otherAlbums.length > 0 && (
             <div>
               {spotifyAlbums.length > 0 && (
-                <h2 className="mb-3 inline-block rounded-lg bg-[#C88965] px-4 py-1.5 text-lg font-semibold text-white">All Upcoming</h2>
+                <h2 className="mb-3 inline-block rounded-lg bg-indigo-600/70 px-4 py-1.5 text-lg font-semibold text-white">All Upcoming</h2>
               )}
               {(() => {
                 const genreGroups = new Map<string, AlbumRelease[]>();
@@ -406,7 +406,7 @@ export default function Music() {
                         const genreAlbums = genreGroups.get(genre)!;
                         return (
                           <div key={genre} className="mb-6 rounded-xl bg-[#BB7044]/15 p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
-                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
+                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-white/70 shrink-0 font-nunito-black">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
                             <div className={gridClasses}>
                               {genreAlbums.map(renderAlbumCard)}
                             </div>
@@ -420,7 +420,7 @@ export default function Music() {
                         const genreAlbums = genreGroups.get(genre)!;
                         return (
                           <div key={genre} className={`mb-6 rounded-xl bg-[#BB7044]/15 p-4${genre.toLowerCase() === 'other' ? ' w-full' : ''}`} style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
-                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
+                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-white/70 shrink-0 font-nunito-black">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
                             <div className="grid gap-3" style={{ gridTemplateColumns: genre.toLowerCase() === 'other' ? 'repeat(auto-fill, 8rem)' : `repeat(${Math.min(genreAlbums.length, 10)}, 8rem)` }}>
                               {genreAlbums.map(renderAlbumCard)}
                             </div>
@@ -499,7 +499,7 @@ export default function Music() {
               {chartListTitles.map((title, idx) => (
                 <div key={title} className="rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
                   <div className="mb-3 flex items-center gap-3">
-                    <h2 className="text-base font-semibold text-white/70 shrink-0">{title}</h2>
+                    <h2 className="text-base font-semibold text-white/70 shrink-0 font-nunito-black">{title}</h2>
                     <div className="h-px flex-1 bg-white/15 mr-2" />
                   </div>
                   {chartLists[idx]()}
@@ -547,7 +547,7 @@ export default function Music() {
                   {Object.entries(charts.topAlbumsByGenre).map(([genre, genreAlbums]) => (
                     <div key={genre} className="mb-6 rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
                       <div className="mb-3 flex items-center gap-3">
-                        <h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2>
+                        <h2 className="text-base font-semibold text-white/70 shrink-0 font-nunito-black">{capitalize(genre)}</h2>
                         <div className="h-px flex-1 bg-white/15 mr-2" />
                       </div>
                       <div className={gridClasses}>
@@ -571,7 +571,7 @@ export default function Music() {
                   {Object.entries(charts.topAlbumsByGenre).map(([genre, genreAlbums]) => (
                     <div key={genre} className="mb-6 rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
                       <div className="mb-3 flex items-center gap-3">
-                        <h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2>
+                        <h2 className="text-base font-semibold text-white/70 shrink-0 font-nunito-black">{capitalize(genre)}</h2>
                         <div className="h-px flex-1 bg-white/15 mr-2" />
                       </div>
                       <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(genreAlbums.length, 10)}, 8rem)` }}>

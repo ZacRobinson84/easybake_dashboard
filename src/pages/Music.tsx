@@ -448,8 +448,11 @@ export default function Music() {
         };
 
         const renderChartRow = (rank: number, imageUrl: string | null, primary: string, secondary: string | null, stat: string) => (
-          <div className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors">
-            <span className="w-6 text-right text-sm font-bold text-white/40">{rank}</span>
+          <div
+            className="grid items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors"
+            style={{ gridTemplateColumns: '1.5rem 2.25rem 1fr auto' }}
+          >
+            <span className="text-right text-sm font-bold text-white/40">{rank}</span>
             {imageUrl ? (
               <img src={imageUrl} alt="" className="h-9 w-9 rounded object-cover" />
             ) : (
@@ -457,16 +460,14 @@ export default function Music() {
                 <Music2 className="h-4 w-4 text-white/30" />
               </div>
             )}
-            <div className="min-w-0 shrink">
-              <p className="truncate text-sm font-medium text-white">{primary}</p>
-              {secondary && <p className="truncate text-xs text-gray-400">{secondary}</p>}
+            <div className="min-w-0 flex items-center gap-3">
+              <div className="min-w-0 shrink">
+                <p className="truncate text-sm font-medium text-white">{primary}</p>
+                {secondary && <p className="truncate text-xs text-gray-400">{secondary}</p>}
+              </div>
+              <div className="flex-1 border-b border-dotted border-white/30 min-w-3 self-center" />
             </div>
-            {stat && (
-              <>
-                <div className="flex-1 border-b border-dotted border-white/30 min-w-3 self-center" />
-                <span className="w-20 text-right text-xs text-gray-500 shrink-0">{stat}</span>
-              </>
-            )}
+            <span className="text-right text-xs text-gray-500 whitespace-nowrap">{stat}</span>
           </div>
         );
 

@@ -5,7 +5,7 @@ import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews } from './steam.ts';
 import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography } from './tmdb.ts';
 import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
-import { fetchAllArtistPopularity } from './lastfm.ts';
+import { fetchAllArtistPopularity, fetchTopCharts } from './lastfm.ts';
 import {
   getAuthUrl,
   exchangeCodeForTokens,
@@ -200,6 +200,23 @@ app.get('/api/movies/director/:personId/filmography', async (req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching filmography:', message);
     res.status(500).json({ error: 'Failed to fetch filmography' });
+  }
+});
+
+app.get('/api/music/charts', async (_req, res) => {
+  if (!lastfmApiKey) {
+    res.status(500).json({ error: 'LASTFM_CLIENT_ID not configured' });
+    return;
+  }
+  try {
+    console.log('Fetching top charts from Last.fm...');
+    const charts = await fetchTopCharts(lastfmApiKey);
+    console.log(`Got ${charts.topTracks.length} top tracks and ${Object.keys(charts.topAlbumsByGenre).length} genre groups`);
+    res.json(charts);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching charts:', message);
+    res.status(500).json({ error: 'Failed to fetch top charts' });
   }
 });
 

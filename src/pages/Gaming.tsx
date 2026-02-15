@@ -54,6 +54,7 @@ export default function Gaming() {
           <p className="text-sm text-gray-500">{today}</p>
         </div>
       </div>
+      <div className="mb-6 h-px bg-white/15" />
 
       {loading && (
         <div className="flex items-center justify-center py-20">

@@ -141,6 +141,7 @@ export default function Movies() {
           </button>
         </div>
       </div>
+      <div className="mb-6 h-px bg-white/15" />
 
       {/* Mobile dot indicators */}
       <div className="mb-4 flex justify-center gap-2 md:hidden">

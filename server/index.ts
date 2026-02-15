@@ -4,11 +4,14 @@ import cors from 'cors';
 import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews } from './steam.ts';
 import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography } from './tmdb.ts';
+import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
+import { fetchAllArtistPopularity } from './lastfm.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
 const clientId = process.env['TWITCH_CLIENT_ID'];
 const clientSecret = process.env['TWITCH_CLIENT_SECRET'];
 const tmdbApiKey = process.env['TMDB_API_KEY'];
+const lastfmApiKey = process.env['LASTFM_CLIENT_ID'];
 
 if (!clientId || !clientSecret) {
   console.error('Missing required environment variables: TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET');
@@ -109,6 +112,44 @@ app.get('/api/movies/director/:personId/filmography', async (req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching filmography:', message);
     res.status(500).json({ error: 'Failed to fetch filmography' });
+  }
+});
+
+app.get('/api/music/upcoming', async (_req, res) => {
+  try {
+    console.log('Fetching upcoming Friday albums from MusicBrainz...');
+    const albums = await fetchUpcomingFridayAlbums();
+    console.log(`Got ${albums.length} albums from MusicBrainz`);
+
+    if (lastfmApiKey) {
+      console.log('Fetching artist popularity from Last.fm...');
+      const popularityMap = await fetchAllArtistPopularity(lastfmApiKey, albums);
+      console.log(`Got popularity data for ${popularityMap.size} artists`);
+
+      for (const album of albums) {
+        album.artistListeners = popularityMap.get(album.artist) ?? null;
+      }
+
+      albums.sort((a, b) => {
+        const aHas = a.artistListeners != null;
+        const bHas = b.artistListeners != null;
+
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+
+        if (aHas && bHas) {
+          return b.artistListeners! - a.artistListeners!;
+        }
+
+        return a.artist.localeCompare(b.artist);
+      });
+    }
+
+    res.json(albums);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching albums:', message);
+    res.status(500).json({ error: 'Failed to fetch album releases' });
   }
 });
 

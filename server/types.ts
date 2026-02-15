@@ -64,3 +64,14 @@ export interface DirectorFilm {
   year: string;
   posterUrl: string | null;
 }
+
+export interface AlbumRelease {
+  id: string;
+  title: string;
+  artist: string;
+  coverUrl: string | null;
+  releaseDate: string;
+  type: string;
+  fridayDate: string;
+  artistListeners?: number | null;
+}

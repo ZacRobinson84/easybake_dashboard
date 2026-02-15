@@ -23,6 +23,7 @@ const tmdbApiKey = process.env['TMDB_API_KEY'];
 const lastfmApiKey = process.env['LASTFM_CLIENT_ID'];
 const spotifyClientId = process.env['SPOTIFY_CLIENT_ID'];
 const spotifyClientSecret = process.env['SPOTIFY_CLIENT_SECRET'];
+const openweatherApiKey = process.env['OPENWEATHER_API_KEY'];
 
 if (!clientId || !clientSecret) {
   console.error('Missing required environment variables: TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET');
@@ -277,6 +278,37 @@ app.get('/api/music/upcoming', async (_req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching albums:', message);
     res.status(500).json({ error: 'Failed to fetch album releases' });
+  }
+});
+
+app.get('/api/weather/forecast', async (req, res) => {
+  if (!openweatherApiKey) {
+    res.status(500).json({ error: 'OPENWEATHER_API_KEY not configured' });
+    return;
+  }
+  const lat = req.query['lat'] as string | undefined;
+  const lon = req.query['lon'] as string | undefined;
+  if (!lat || !lon) {
+    res.status(400).json({ error: 'Missing lat and lon query parameters' });
+    return;
+  }
+  try {
+    console.log(`Fetching weather for lat=${lat}, lon=${lon}...`);
+    const base = `https://api.openweathermap.org/data/2.5`;
+    const params = `lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&units=metric&appid=${openweatherApiKey}`;
+    const [currentRes, forecastRes] = await Promise.all([
+      fetch(`${base}/weather?${params}`),
+      fetch(`${base}/forecast?${params}`),
+    ]);
+    if (!currentRes.ok) throw new Error(`OpenWeather current API error: ${currentRes.status}`);
+    if (!forecastRes.ok) throw new Error(`OpenWeather forecast API error: ${forecastRes.status}`);
+    const current = await currentRes.json();
+    const forecast = await forecastRes.json();
+    res.json({ current, forecast });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching weather:', message);
+    res.status(500).json({ error: 'Failed to fetch weather forecast' });
   }
 });
 

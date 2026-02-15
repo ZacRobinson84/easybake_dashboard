@@ -32,7 +32,7 @@ if (!clientId || !clientSecret) {
 
 const app = express();
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
 app.use(express.json());
 
 // --- Spotify OAuth routes ---
@@ -58,9 +58,11 @@ app.get('/api/spotify/callback', async (req, res) => {
   const state = req.query['state'] as string | undefined;
   const error = req.query['error'] as string | undefined;
 
+  const frontendUrl = process.env.FRONTEND_URL || 'http://127.0.0.1:5173';
+
   if (error) {
     console.error('Spotify auth error:', error);
-    res.redirect('http://127.0.0.1:5173/music');
+    res.redirect(`${frontendUrl}/music`);
     return;
   }
 
@@ -73,7 +75,7 @@ app.get('/api/spotify/callback', async (req, res) => {
 
   try {
     await exchangeCodeForTokens(spotifyClientId, spotifyClientSecret, code);
-    res.redirect('http://127.0.0.1:5173/music');
+    res.redirect(`${frontendUrl}/music`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Spotify token exchange error:', message);
@@ -278,6 +280,7 @@ app.get('/api/music/upcoming', async (_req, res) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log('Server running on http://localhost:3001');
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });

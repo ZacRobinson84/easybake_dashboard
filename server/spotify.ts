@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { randomBytes } from 'crypto';
 
 const TOKEN_FILE = '.spotify-tokens.json';
-const REDIRECT_URI = 'http://127.0.0.1:5173/api/spotify/callback';
+const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:5173/api/spotify/callback';
 const SCOPES = 'user-top-read user-read-recently-played';
 
 interface SpotifyTokens {

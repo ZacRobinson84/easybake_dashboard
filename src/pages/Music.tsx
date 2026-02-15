@@ -464,7 +464,7 @@ export default function Music() {
             {stat && (
               <>
                 <div className="flex-1 border-b border-dotted border-white/30 min-w-3 self-center" />
-                <span className="text-xs text-gray-500 shrink-0">{stat}</span>
+                <span className="w-20 text-right text-xs text-gray-500 shrink-0">{stat}</span>
               </>
             )}
           </div>

@@ -79,3 +79,36 @@ export interface AlbumRelease {
   inSpotifyLibrary?: boolean;
   genre?: string;
 }
+
+export interface ChartTrack {
+  name: string;
+  artist: string;
+  playcount: number;
+  listeners: number;
+  url: string;
+  imageUrl: string | null;
+}
+
+export interface ChartAlbum {
+  name: string;
+  artist: string;
+  url: string;
+  imageUrl: string | null;
+  genre: string;
+  releaseDate: string | null;
+}
+
+export interface ChartArtist {
+  name: string;
+  playcount: number;
+  listeners: number;
+  url: string;
+  imageUrl: string | null;
+}
+
+export interface TopChartsResponse {
+  topTracks: ChartTrack[];
+  topAlbums: ChartAlbum[];
+  topArtists: ChartArtist[];
+  topAlbumsByGenre: Record<string, ChartAlbum[]>;
+}

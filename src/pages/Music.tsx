@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Music2, Loader2 } from 'lucide-react';
+import { Music2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import AlbumCard from '../components/music/AlbumCard';
 import type { PlaybackState } from '../components/music/AlbumCard';
 
@@ -16,12 +16,60 @@ interface AlbumRelease {
   genre?: string;
 }
 
+interface ChartTrack {
+  name: string;
+  artist: string;
+  playcount: number;
+  listeners: number;
+  url: string;
+  imageUrl: string | null;
+}
+
+interface ChartAlbum {
+  name: string;
+  artist: string;
+  url: string;
+  imageUrl: string | null;
+  genre: string;
+  releaseDate: string | null;
+}
+
+interface ChartArtist {
+  name: string;
+  playcount: number;
+  listeners: number;
+  url: string;
+  imageUrl: string | null;
+}
+
+interface TopChartsResponse {
+  topTracks: ChartTrack[];
+  topAlbums: ChartAlbum[];
+  topArtists: ChartArtist[];
+  topAlbumsByGenre: Record<string, ChartAlbum[]>;
+}
+
+type Tab = 'releases' | 'top-charts';
+
 export default function Music() {
+  const [activeTab, setActiveTab] = useState<Tab>('releases');
+
+  // Releases state
   const [albums, setAlbums] = useState<AlbumRelease[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fridayLabel, setFridayLabel] = useState('');
   const [spotifyConnected, setSpotifyConnected] = useState(false);
+
+  // Charts state
+  const [charts, setCharts] = useState<TopChartsResponse | null>(null);
+  const [chartsLoading, setChartsLoading] = useState(false);
+  const [chartsError, setChartsError] = useState<string | null>(null);
+  const chartsFetched = useRef(false);
+  const [chartListIndex, setChartListIndex] = useState(0);
+
+  // Swipe tracking
+  const touchStartX = useRef(0);
 
   // Audio playback state
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -46,7 +94,6 @@ export default function Music() {
   }, []);
 
   const handleTogglePlay = useCallback(async (artist: string) => {
-    // If clicking the currently playing artist, toggle pause/play
     if (currentArtist === artist) {
       const audio = audioRef.current;
       if (audio) {
@@ -62,7 +109,6 @@ export default function Music() {
       return;
     }
 
-    // Stop any current playback
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
@@ -135,6 +181,26 @@ export default function Music() {
       });
   }, []);
 
+  // Lazy-fetch charts on first switch
+  useEffect(() => {
+    if (activeTab !== 'top-charts' || chartsFetched.current) return;
+    chartsFetched.current = true;
+    setChartsLoading(true);
+    fetch('/api/music/charts')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        return res.json();
+      })
+      .then((data: TopChartsResponse) => {
+        setCharts(data);
+        setChartsLoading(false);
+      })
+      .catch((err: unknown) => {
+        setChartsError(err instanceof Error ? err.message : 'Failed to fetch charts');
+        setChartsLoading(false);
+      });
+  }, [activeTab]);
+
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -144,6 +210,17 @@ export default function Music() {
       }
     };
   }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      setActiveTab(diff > 0 ? 'top-charts' : 'releases');
+    }
+  };
 
   const spotifyAlbums = albums.filter((a) => a.inSpotifyLibrary);
   const otherAlbums = albums.filter((a) => !a.inSpotifyLibrary);
@@ -167,66 +244,126 @@ export default function Music() {
     />
   );
 
+  const formatPlaycount = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return String(n);
+  };
+
+  const currentLoading = activeTab === 'releases' ? loading : chartsLoading;
+  const currentError = activeTab === 'releases' ? error : chartsError;
+  const subtitle = activeTab === 'releases' ? fridayLabel : 'Most popular on Last.fm';
+
   return (
-    <div className="p-6 md:p-10">
-      <div className="mb-6 flex items-center gap-3">
-        <Music2 className="h-6 w-6 text-indigo-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">New Album Releases</h1>
-          {fridayLabel && <p className="text-sm text-gray-500">{fridayLabel}</p>}
+    <div
+      className="p-6 md:p-10"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <Music2 className="h-6 w-6 text-indigo-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              {activeTab === 'releases' ? 'New Album Releases' : 'Top Charts'}
+            </h1>
+            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+          </div>
         </div>
-        <div className="ml-auto">
-          {!spotifyConnected ? (
-            <a
-              href="/api/spotify/login"
-              className="inline-flex items-center gap-2 rounded-full bg-[#1DB954] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ed760]"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
-              </svg>
-              Connect Spotify
-            </a>
-          ) : (
-            <button
-              onClick={() => {
-                fetch('/api/spotify/logout', { method: 'POST' })
-                  .then(() => {
-                    setSpotifyConnected(false);
-                    window.location.reload();
-                  })
-                  .catch(() => {});
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-600"
-            >
-              Disconnect Spotify
-            </button>
+
+        {/* Tab pills + Spotify button */}
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <button
+            onClick={() => setActiveTab('releases')}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+              activeTab === 'releases'
+                ? 'bg-indigo-600 text-white'
+                : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
+            }`}
+          >
+            New Releases
+          </button>
+          <button
+            onClick={() => setActiveTab('top-charts')}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+              activeTab === 'top-charts'
+                ? 'bg-indigo-600 text-white'
+                : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Top Charts
+          </button>
+          {activeTab === 'releases' && (
+            <>
+              {!spotifyConnected ? (
+                <a
+                  href="/api/spotify/login"
+                  className="ml-2 inline-flex items-center gap-2 rounded-full bg-[#1DB954] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ed760]"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                  </svg>
+                  Connect Spotify
+                </a>
+              ) : (
+                <button
+                  onClick={() => {
+                    fetch('/api/spotify/logout', { method: 'POST' })
+                      .then(() => {
+                        setSpotifyConnected(false);
+                        window.location.reload();
+                      })
+                      .catch(() => {});
+                  }}
+                  className="ml-2 inline-flex items-center gap-2 rounded-full bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-600"
+                >
+                  Disconnect Spotify
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
+      <div className="mb-6 h-px bg-white/15" />
 
-      {loading && (
+      {/* Mobile dot indicators */}
+      <div className="mb-4 flex justify-center gap-2 md:hidden">
+        <span
+          className={`h-2 w-2 rounded-full transition-colors ${
+            activeTab === 'releases' ? 'bg-indigo-600' : 'bg-gray-600'
+          }`}
+        />
+        <span
+          className={`h-2 w-2 rounded-full transition-colors ${
+            activeTab === 'top-charts' ? 'bg-indigo-600' : 'bg-gray-600'
+          }`}
+        />
+      </div>
+
+      {currentLoading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
         </div>
       )}
 
-      {error && (
+      {currentError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
+          {currentError}
         </div>
       )}
 
-      {!loading && !error && albums.length === 0 && (
+      {/* === Releases Tab === */}
+      {activeTab === 'releases' && !loading && !error && albums.length === 0 && (
         <div className="py-20 text-center text-gray-500">
           No album releases this Friday
         </div>
       )}
 
-      {!loading && !error && albums.length > 0 && (
+      {activeTab === 'releases' && !loading && !error && albums.length > 0 && (
         <>
           {spotifyAlbums.length > 0 && (
             <div className="mb-8">
-              <h2 className="mb-3 inline-block rounded-lg bg-[#8B5E3C] px-4 py-1.5 text-lg font-semibold text-white">From Your Artists</h2>
+              <h2 className="mb-3 inline-block rounded-lg bg-[#C88965] px-4 py-1.5 text-lg font-semibold text-white">From Your Artists</h2>
               <div className={gridClasses}>
                 {spotifyAlbums.map(renderAlbumCard)}
               </div>
@@ -236,7 +373,7 @@ export default function Music() {
           {otherAlbums.length > 0 && (
             <div>
               {spotifyAlbums.length > 0 && (
-                <h2 className="mb-3 inline-block rounded-lg bg-[#8B5E3C] px-4 py-1.5 text-lg font-semibold text-white">All Upcoming</h2>
+                <h2 className="mb-3 inline-block rounded-lg bg-[#C88965] px-4 py-1.5 text-lg font-semibold text-white">All Upcoming</h2>
               )}
               {(() => {
                 const genreGroups = new Map<string, AlbumRelease[]>();
@@ -268,8 +405,8 @@ export default function Music() {
                       {sortedGenres.map((genre) => {
                         const genreAlbums = genreGroups.get(genre)!;
                         return (
-                          <div key={genre} className="mb-6 rounded-xl bg-[#C88B4A]/15 p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
-                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-[#8B5E3C] shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
+                          <div key={genre} className="mb-6 rounded-xl bg-[#BB7044]/15 p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
+                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
                             <div className={gridClasses}>
                               {genreAlbums.map(renderAlbumCard)}
                             </div>
@@ -282,8 +419,8 @@ export default function Music() {
                       {sortedGenres.map((genre) => {
                         const genreAlbums = genreGroups.get(genre)!;
                         return (
-                          <div key={genre} className={`mb-6 rounded-xl bg-[#C88B4A]/15 p-4${genre.toLowerCase() === 'other' ? ' w-full' : ''}`} style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
-                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-[#8B5E3C] shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
+                          <div key={genre} className={`mb-6 rounded-xl bg-[#BB7044]/15 p-4${genre.toLowerCase() === 'other' ? ' w-full' : ''}`} style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
+                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
                             <div className="grid gap-3" style={{ gridTemplateColumns: genre.toLowerCase() === 'other' ? 'repeat(auto-fill, 8rem)' : `repeat(${Math.min(genreAlbums.length, 10)}, 8rem)` }}>
                               {genreAlbums.map(renderAlbumCard)}
                             </div>
@@ -298,6 +435,166 @@ export default function Music() {
           )}
         </>
       )}
+
+      {/* === Top Charts Tab === */}
+      {activeTab === 'top-charts' && !chartsLoading && !chartsError && charts && (() => {
+        const chartListTitles = ['Top 20 Songs', 'Top 20 Albums', 'Top 20 Artists'];
+
+        const formatAlbumDate = (dateStr: string | null) => {
+          if (!dateStr) return '';
+          const [y, m, d] = dateStr.split('-').map(Number);
+          const date = new Date(y, m - 1, d);
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+
+        const renderChartRow = (rank: number, imageUrl: string | null, primary: string, secondary: string | null, stat: string) => (
+          <div className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors">
+            <span className="w-6 text-right text-sm font-bold text-white/40">{rank}</span>
+            {imageUrl ? (
+              <img src={imageUrl} alt="" className="h-9 w-9 rounded object-cover" />
+            ) : (
+              <div className="h-9 w-9 rounded bg-white/10 flex items-center justify-center">
+                <Music2 className="h-4 w-4 text-white/30" />
+              </div>
+            )}
+            <div className="min-w-0 shrink">
+              <p className="truncate text-sm font-medium text-white">{primary}</p>
+              {secondary && <p className="truncate text-xs text-gray-400">{secondary}</p>}
+            </div>
+            {stat && (
+              <>
+                <div className="flex-1 border-b border-dotted border-white/30 min-w-3 self-center" />
+                <span className="text-xs text-gray-500 shrink-0">{stat}</span>
+              </>
+            )}
+          </div>
+        );
+
+        const renderSongsList = () => (
+          <div className="space-y-1">
+            {charts.topTracks.map((track, i) => renderChartRow(i + 1, track.imageUrl, track.name, track.artist, `${formatPlaycount(track.playcount)} plays`))}
+          </div>
+        );
+
+        const renderAlbumsList = () => (
+          <div className="space-y-1">
+            {charts.topAlbums.map((album, i) => renderChartRow(i + 1, album.imageUrl, album.name, album.artist, formatAlbumDate(album.releaseDate)))}
+          </div>
+        );
+
+        const renderArtistsList = () => (
+          <div className="space-y-1">
+            {charts.topArtists.map((artist, i) => renderChartRow(i + 1, artist.imageUrl, artist.name, null, `${formatPlaycount(artist.listeners)} listeners`))}
+          </div>
+        );
+
+        const chartLists = [renderSongsList, renderAlbumsList, renderArtistsList];
+
+        const containerStyle = { clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' };
+
+        return (
+          <>
+            {/* Desktop: 3-column grid */}
+            <div className="hidden md:grid md:grid-cols-3 md:gap-6 mb-8">
+              {chartListTitles.map((title, idx) => (
+                <div key={title} className="rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
+                  <div className="mb-3 flex items-center gap-3">
+                    <h2 className="text-base font-semibold text-white/70 shrink-0">{title}</h2>
+                    <div className="h-px flex-1 bg-white/15 mr-2" />
+                  </div>
+                  {chartLists[idx]()}
+                </div>
+              ))}
+            </div>
+
+            {/* Mobile: carousel */}
+            <div className="md:hidden mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() => setChartListIndex((i) => Math.max(0, i - 1))}
+                  disabled={chartListIndex === 0}
+                  className="text-white/50 hover:text-white/80 disabled:opacity-30 transition-colors p-1"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <span className="text-sm font-semibold text-white/70">{chartListTitles[chartListIndex]}</span>
+                <button
+                  onClick={() => setChartListIndex((i) => Math.min(2, i + 1))}
+                  disabled={chartListIndex === 2}
+                  className="text-white/50 hover:text-white/80 disabled:opacity-30 transition-colors p-1"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
+                {chartLists[chartListIndex]()}
+              </div>
+              <div className="flex justify-center gap-2 mt-3">
+                {[0, 1, 2].map((idx) => (
+                  <span
+                    key={idx}
+                    className={`h-2 w-2 rounded-full transition-colors ${chartListIndex === idx ? 'bg-indigo-600' : 'bg-gray-600'}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Top Albums by Genre */}
+            {Object.keys(charts.topAlbumsByGenre).length > 0 && (
+              <>
+                {/* Mobile: stacked */}
+                <div className="md:hidden">
+                  {Object.entries(charts.topAlbumsByGenre).map(([genre, genreAlbums]) => (
+                    <div key={genre} className="mb-6 rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
+                      <div className="mb-3 flex items-center gap-3">
+                        <h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2>
+                        <div className="h-px flex-1 bg-white/15 mr-2" />
+                      </div>
+                      <div className={gridClasses}>
+                        {genreAlbums.map((album) => (
+                          <AlbumCard
+                            key={`${album.name}-${album.artist}`}
+                            title={album.name}
+                            artist={album.artist}
+                            coverUrl={album.imageUrl}
+                            type=""
+                            playbackState={getPlaybackState(album.artist)}
+                            onTogglePlay={handleTogglePlay}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop: side by side */}
+                <div className="hidden md:flex md:flex-wrap md:gap-x-6">
+                  {Object.entries(charts.topAlbumsByGenre).map(([genre, genreAlbums]) => (
+                    <div key={genre} className="mb-6 rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
+                      <div className="mb-3 flex items-center gap-3">
+                        <h2 className="text-base font-semibold text-white/70 shrink-0">{capitalize(genre)}</h2>
+                        <div className="h-px flex-1 bg-white/15 mr-2" />
+                      </div>
+                      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(genreAlbums.length, 10)}, 8rem)` }}>
+                        {genreAlbums.map((album) => (
+                          <AlbumCard
+                            key={`${album.name}-${album.artist}`}
+                            title={album.name}
+                            artist={album.artist}
+                            coverUrl={album.imageUrl}
+                            type=""
+                            playbackState={getPlaybackState(album.artist)}
+                            onTogglePlay={handleTogglePlay}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

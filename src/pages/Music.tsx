@@ -58,7 +58,10 @@ export default function Music() {
   const spotifyAlbums = albums.filter((a) => a.inSpotifyLibrary);
   const otherAlbums = albums.filter((a) => !a.inSpotifyLibrary);
 
-  const capitalize = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+  const genreRenames: Record<string, string> = {
+    'atmospheric black metal': 'Atmos Black Metal',
+  };
+  const capitalize = (s: string) => genreRenames[s.toLowerCase()] ?? s.replace(/\b\w/g, (c) => c.toUpperCase());
 
   const gridClasses = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10';
 
@@ -121,7 +124,7 @@ export default function Music() {
         <>
           {spotifyAlbums.length > 0 && (
             <div className="mb-8">
-              <h2 className="mb-3 text-lg font-semibold text-[#1DB954]">From Your Artists</h2>
+              <h2 className="mb-3 inline-block rounded-lg bg-[#8B5E3C] px-4 py-1.5 text-lg font-semibold text-white">From Your Artists</h2>
               <div className={gridClasses}>
                 {spotifyAlbums.map((album) => (
                   <AlbumCard
@@ -139,12 +142,13 @@ export default function Music() {
           {otherAlbums.length > 0 && (
             <div>
               {spotifyAlbums.length > 0 && (
-                <h2 className="mb-3 text-lg font-semibold text-gray-400">All Upcoming</h2>
+                <h2 className="mb-3 inline-block rounded-lg bg-[#8B5E3C] px-4 py-1.5 text-lg font-semibold text-white">All Upcoming</h2>
               )}
               {(() => {
                 const genreGroups = new Map<string, AlbumRelease[]>();
                 for (const album of otherAlbums) {
                   const genre = album.genre || 'Other';
+                  if (genre.toLowerCase() === 'my top songs') continue;
                   if (!genreGroups.has(genre)) genreGroups.set(genre, []);
                   genreGroups.get(genre)!.push(album);
                 }
@@ -170,8 +174,8 @@ export default function Music() {
                       {sortedGenres.map((genre) => {
                         const albums = genreGroups.get(genre)!;
                         return (
-                          <div key={genre} className="mb-6">
-                            <h2 className="mb-3 text-base font-semibold text-gray-500">{capitalize(genre)}</h2>
+                          <div key={genre} className="mb-6 rounded-xl bg-[#C88B4A]/15 p-4" style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
+                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-[#8B5E3C] shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
                             <div className={gridClasses}>
                               {albums.map((album) => (
                                 <AlbumCard
@@ -192,9 +196,9 @@ export default function Music() {
                       {sortedGenres.map((genre) => {
                         const albums = genreGroups.get(genre)!;
                         return (
-                          <div key={genre} className="mb-6">
-                            <h2 className="mb-3 text-base font-semibold text-gray-500">{capitalize(genre)}</h2>
-                            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(albums.length, 10)}, 8rem)` }}>
+                          <div key={genre} className={`mb-6 rounded-xl bg-[#C88B4A]/15 p-4${genre.toLowerCase() === 'other' ? ' w-full' : ''}`} style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}>
+                            <div className="mb-3 flex items-center gap-3"><h2 className="text-base font-semibold text-[#8B5E3C] shrink-0">{capitalize(genre)}</h2><div className="h-px flex-1 bg-white/15 mr-2" /></div>
+                            <div className="grid gap-3" style={{ gridTemplateColumns: genre.toLowerCase() === 'other' ? 'repeat(auto-fill, 8rem)' : `repeat(${Math.min(albums.length, 10)}, 8rem)` }}>
                               {albums.map((album) => (
                                 <AlbumCard
                                   key={album.id}

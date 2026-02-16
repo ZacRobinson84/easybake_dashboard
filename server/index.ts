@@ -20,6 +20,7 @@ import {
   clearTokens,
   fetchArtistTopPreview,
 } from './spotify.ts';
+import { initDb, hasDatabase, dbGetWatchedMovies, dbInsertWatchedMovie, dbDeleteWatchedMovie } from './db.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
 const clientId = process.env['TWITCH_CLIENT_ID'];
@@ -139,12 +140,12 @@ app.get('/api/spotify/callback', async (req, res) => {
   }
 });
 
-app.get('/api/spotify/status', (_req, res) => {
-  res.json({ authenticated: isAuthenticated() });
+app.get('/api/spotify/status', async (_req, res) => {
+  res.json({ authenticated: await isAuthenticated() });
 });
 
-app.post('/api/spotify/logout', (_req, res) => {
-  clearTokens();
+app.post('/api/spotify/logout', async (_req, res) => {
+  await clearTokens();
   res.json({ success: true });
 });
 
@@ -311,7 +312,7 @@ app.get('/api/music/upcoming', async (_req, res) => {
     }
 
     // Tag albums from Spotify library
-    if (spotifyClientId && spotifyClientSecret && isAuthenticated()) {
+    if (spotifyClientId && spotifyClientSecret && await isAuthenticated()) {
       try {
         const accessToken = await ensureValidToken(spotifyClientId, spotifyClientSecret);
         const spotifyArtists = await fetchSpotifyArtistNames(accessToken);
@@ -393,32 +394,57 @@ function writeWatchedMovies(movies: WatchedMovie[]): void {
   fs.writeFileSync(WATCHED_FILE, JSON.stringify(movies, null, 2));
 }
 
-app.get('/api/movies/watched', (_req, res) => {
+app.get('/api/movies/watched', async (_req, res) => {
+  if (hasDatabase()) {
+    const movies = await dbGetWatchedMovies();
+    if (movies) {
+      movies.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''));
+      res.json(movies);
+      return;
+    }
+  }
   const movies = readWatchedMovies();
   movies.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''));
   res.json(movies);
 });
 
-app.post('/api/movies/watched', (req, res) => {
+app.post('/api/movies/watched', async (req, res) => {
   const { id, title, posterUrl, releaseDate } = req.body;
   if (!id || !title) {
     res.status(400).json({ error: 'Missing id or title' });
     return;
   }
+  const movie: WatchedMovie = { id, title, posterUrl: posterUrl ?? null, releaseDate: releaseDate ?? '', addedAt: new Date().toISOString() };
+
+  if (hasDatabase()) {
+    await dbInsertWatchedMovie(movie);
+    const movies = await dbGetWatchedMovies();
+    res.json(movies ?? []);
+    return;
+  }
+
   const movies = readWatchedMovies();
   if (movies.some((m) => m.id === id)) {
     res.json(movies);
     return;
   }
-  movies.push({ id, title, posterUrl: posterUrl ?? null, releaseDate: releaseDate ?? '', addedAt: new Date().toISOString() });
+  movies.push(movie);
   writeWatchedMovies(movies);
   res.json(movies);
 });
 
-app.delete('/api/movies/watched/:id', (req, res) => {
-  const id = Number(req.params['id']);
+app.delete('/api/movies/watched/:id', async (req, res) => {
+  const movieId = Number(req.params['id']);
+
+  if (hasDatabase()) {
+    await dbDeleteWatchedMovie(movieId);
+    const movies = await dbGetWatchedMovies();
+    res.json(movies ?? []);
+    return;
+  }
+
   let movies = readWatchedMovies();
-  movies = movies.filter((m) => m.id !== id);
+  movies = movies.filter((m) => m.id !== movieId);
   writeWatchedMovies(movies);
   res.json(movies);
 });
@@ -444,6 +470,10 @@ app.get('/api/movies/search', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+
+(async () => {
+  await initDb();
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+})();

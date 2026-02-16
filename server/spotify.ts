@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { randomBytes } from 'crypto';
+import { hasDatabase, dbLoadTokens, dbSaveTokens, dbClearTokens } from './db.ts';
 
 const TOKEN_FILE = '.spotify-tokens.json';
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:5173/api/spotify/callback';
@@ -11,7 +12,7 @@ interface SpotifyTokens {
   expires_at: number;
 }
 
-function loadTokens(): SpotifyTokens | null {
+function loadTokensFromFile(): SpotifyTokens | null {
   if (!existsSync(TOKEN_FILE)) return null;
   try {
     return JSON.parse(readFileSync(TOKEN_FILE, 'utf-8')) as SpotifyTokens;
@@ -20,15 +21,35 @@ function loadTokens(): SpotifyTokens | null {
   }
 }
 
-function saveTokens(tokens: SpotifyTokens): void {
+function saveTokensToFile(tokens: SpotifyTokens): void {
   writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
 }
 
-export function isAuthenticated(): boolean {
-  return loadTokens() !== null;
+async function loadTokens(): Promise<SpotifyTokens | null> {
+  if (hasDatabase()) {
+    return dbLoadTokens();
+  }
+  return loadTokensFromFile();
 }
 
-export function clearTokens(): void {
+async function saveTokens(tokens: SpotifyTokens): Promise<void> {
+  if (hasDatabase()) {
+    await dbSaveTokens(tokens);
+    return;
+  }
+  saveTokensToFile(tokens);
+}
+
+export async function isAuthenticated(): Promise<boolean> {
+  const tokens = await loadTokens();
+  return tokens !== null;
+}
+
+export async function clearTokens(): Promise<void> {
+  if (hasDatabase()) {
+    await dbClearTokens();
+    return;
+  }
   if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE);
 }
 
@@ -73,7 +94,7 @@ export async function exchangeCodeForTokens(
     expires_in: number;
   };
 
-  saveTokens({
+  await saveTokens({
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: Date.now() + data.expires_in * 1000,
@@ -81,7 +102,7 @@ export async function exchangeCodeForTokens(
 }
 
 async function refreshAccessToken(clientId: string, clientSecret: string): Promise<string> {
-  const tokens = loadTokens();
+  const tokens = await loadTokens();
   if (!tokens) throw new Error('No Spotify tokens found');
 
   const res = await fetch('https://accounts.spotify.com/api/token', {
@@ -107,7 +128,7 @@ async function refreshAccessToken(clientId: string, clientSecret: string): Promi
     expires_in: number;
   };
 
-  saveTokens({
+  await saveTokens({
     access_token: data.access_token,
     refresh_token: data.refresh_token ?? tokens.refresh_token,
     expires_at: Date.now() + data.expires_in * 1000,
@@ -117,7 +138,7 @@ async function refreshAccessToken(clientId: string, clientSecret: string): Promi
 }
 
 export async function ensureValidToken(clientId: string, clientSecret: string): Promise<string> {
-  const tokens = loadTokens();
+  const tokens = await loadTokens();
   if (!tokens) throw new Error('No Spotify tokens found');
 
   if (Date.now() < tokens.expires_at - 60_000) {

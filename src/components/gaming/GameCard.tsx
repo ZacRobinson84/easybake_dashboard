@@ -81,7 +81,9 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
     ? { background: (gradientStyle.background as string).replace('to top', 'to bottom') }
     : undefined;
 
-  const handleCoverClick = () => {
+  const handleCoverClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (steamDescription) {
       setFlipped(!flipped);
     }

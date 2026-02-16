@@ -51,7 +51,7 @@ app.use(express.json());
 
 // --- Auth routes & middleware ---
 
-const PUBLIC_PATHS = ['/api/health', '/api/auth/login'];
+const PUBLIC_PATHS = ['/api/health', '/api/auth/login', '/api/spotify/login', '/api/spotify/callback'];
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   const { password } = req.body;

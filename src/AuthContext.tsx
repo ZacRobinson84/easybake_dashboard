@@ -11,9 +11,12 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('jwt'));
 
-  const logout = useCallback(() => setToken(null), []);
+  const logout = useCallback(() => {
+    localStorage.removeItem('jwt');
+    setToken(null);
+  }, []);
 
   const login = useCallback(async (password: string) => {
     try {
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: data.error || 'Login failed' };
       }
       const { token: jwt } = await res.json();
+      localStorage.setItem('jwt', jwt);
       setToken(jwt);
       return { ok: true };
     } catch {
@@ -42,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const res = await fetch(input, { ...init, headers });
       if (res.status === 401) {
+        localStorage.removeItem('jwt');
         setToken(null);
       }
       return res;

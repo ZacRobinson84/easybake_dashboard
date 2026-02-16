@@ -1,14 +1,14 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 function serverReloadPlugin() {
   return {
     name: 'server-reload',
-    configureServer(server) {
+    configureServer(server: ViteDevServer) {
       const { watcher } = server;
       watcher.add('./server/**');
-      watcher.on('change', (path) => {
+      watcher.on('change', (path: string) => {
         if (path.includes('server')) {
           server.ws.send({ type: 'full-reload' });
         }

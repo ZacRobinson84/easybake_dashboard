@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import ColorThief from 'colorthief';
-import { Gamepad2, ThumbsUp } from 'lucide-react';
+import { Gamepad2, ThumbsUp, X } from 'lucide-react';
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255;
@@ -47,11 +47,13 @@ interface GameCardProps {
     totalReviews: number;
     reviewScoreDesc: string;
   } | null;
+  steamDescription: string | null;
 }
 
-export default function GameCard({ name, coverUrl, platforms, steamAppId, websiteUrl, steamReviews }: GameCardProps) {
+export default function GameCard({ name, coverUrl, platforms, steamAppId, websiteUrl, steamReviews, steamDescription }: GameCardProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
+  const [flipped, setFlipped] = useState(false);
 
   const handleImageLoad = () => {
     const img = imgRef.current;
@@ -75,27 +77,127 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
     : websiteUrl ?? `https://store.steampowered.com/search/?term=${encodeURIComponent(name)}`;
 
   const hasGradient = !!gradientStyle;
+  const reversedGradientStyle: React.CSSProperties | undefined = gradientStyle?.background
+    ? { background: (gradientStyle.background as string).replace('to top', 'to bottom') }
+    : undefined;
 
-  const content = (
-    <>
-      <div className="overflow-hidden rounded-t-lg bg-gray-100">
-        {coverUrl ? (
-          <img
-            ref={imgRef}
-            crossOrigin="anonymous"
-            onLoad={handleImageLoad}
-            src={coverUrl}
-            alt={name}
-            className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
-          />
+  const handleCoverClick = () => {
+    if (steamDescription) {
+      setFlipped(!flipped);
+    }
+  };
+
+  // Cards without a description: entire card is a link (original behavior)
+  if (!steamDescription) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
+      >
+        <div className="overflow-hidden rounded-t-lg bg-gray-100">
+          {coverUrl ? (
+            <img
+              ref={imgRef}
+              crossOrigin="anonymous"
+              onLoad={handleImageLoad}
+              src={coverUrl}
+              alt={name}
+              className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-gray-400">
+              <Gamepad2 className="h-12 w-12" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
+          <h3 className={`line-clamp-2 text-sm font-semibold ${hasGradient ? 'text-white' : 'text-gray-900'}`}>{name}</h3>
+          {platforms.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {platforms.map((platform) => (
+                <span
+                  key={platform}
+                  className={`rounded-full px-2 py-0.5 text-xs ${hasGradient ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  {platform}
+                </span>
+              ))}
+            </div>
+          )}
+          {steamReviews && (
+            <div className={`mt-2 flex items-center gap-1 text-xs ${hasGradient ? 'text-white/80' : 'text-gray-500'}`}>
+              <ThumbsUp className="h-3 w-3" />
+              <span>{steamReviews.totalReviews.toLocaleString()} reviews</span>
+              {steamReviews.reviewScoreDesc && !steamReviews.reviewScoreDesc.includes('user reviews') && (
+                <>
+                  <span className={hasGradient ? 'text-white/60' : 'text-gray-400'}>·</span>
+                  <span>{steamReviews.reviewScoreDesc}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </a>
+    );
+  }
+
+  // Cards with a description: cover area is clickable to flip, info section links to Steam
+  return (
+    <div className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
+      <div
+        className="relative overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer"
+        onClick={handleCoverClick}
+      >
+        {!flipped ? (
+          <>
+            {coverUrl ? (
+              <img
+                ref={imgRef}
+                crossOrigin="anonymous"
+                onLoad={handleImageLoad}
+                src={coverUrl}
+                alt={name}
+                className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-gray-400">
+                <Gamepad2 className="h-12 w-12" />
+              </div>
+            )}
+          </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-gray-400">
-            <Gamepad2 className="h-12 w-12" />
+          <div
+            className="flex flex-col w-full h-full overflow-y-auto p-3"
+            style={reversedGradientStyle ?? { background: 'linear-gradient(to top, #c4b5fd, #8b5cf6)' }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold text-white/90 uppercase tracking-wide">
+                About
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+                className="flex-shrink-0 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <p className="text-[11px] leading-relaxed text-white/90">
+              {steamDescription}
+            </p>
           </div>
         )}
       </div>
       <div className="flex-1 border-t-2 border-white/20 p-3" style={gradientStyle}>
-        <h3 className={`line-clamp-2 text-sm font-semibold ${hasGradient ? 'text-white' : 'text-gray-900'}`}>{name}</h3>
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`line-clamp-2 text-sm font-semibold hover:underline ${hasGradient ? 'text-white' : 'text-gray-900'}`}
+        >
+          {name}
+        </a>
         {platforms.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {platforms.map((platform) => (
@@ -112,22 +214,15 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
           <div className={`mt-2 flex items-center gap-1 text-xs ${hasGradient ? 'text-white/80' : 'text-gray-500'}`}>
             <ThumbsUp className="h-3 w-3" />
             <span>{steamReviews.totalReviews.toLocaleString()} reviews</span>
-            <span className={hasGradient ? 'text-white/60' : 'text-gray-400'}>·</span>
-            <span>{steamReviews.reviewScoreDesc}</span>
+            {steamReviews.reviewScoreDesc && !steamReviews.reviewScoreDesc.includes('user reviews') && (
+              <>
+                <span className={hasGradient ? 'text-white/60' : 'text-gray-400'}>·</span>
+                <span>{steamReviews.reviewScoreDesc}</span>
+              </>
+            )}
           </div>
         )}
       </div>
-    </>
-  );
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
-    >
-      {content}
-    </a>
+    </div>
   );
 }

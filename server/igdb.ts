@@ -37,8 +37,9 @@ export async function fetchTodayReleases(clientId: string, clientSecret: string)
   const endOfDay = startOfDay + 86400;
 
   const body = [
-    'fields name,cover.url,platforms.name,external_games.category,external_games.uid,websites.url,websites.category;',
+    'fields name,cover.url,platforms.name,external_games.category,external_games.uid,websites.url,websites.category,hypes,follows;',
     `where first_release_date >= ${startOfDay} & first_release_date < ${endOfDay};`,
+    'sort hypes desc;',
     'limit 50;',
   ].join('\n');
 
@@ -77,6 +78,8 @@ export async function fetchTodayReleases(clientId: string, clientSecret: string)
       platforms: game.platforms?.map((p) => p.name) ?? [],
       steamAppId: steamExternal?.uid ?? null,
       websiteUrl,
+      hypes: game.hypes ?? 0,
+      follows: game.follows ?? 0,
     };
   });
 }

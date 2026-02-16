@@ -23,6 +23,8 @@ export interface IGDBGame {
   platforms?: IGDBPlatform[];
   external_games?: IGDBExternalGame[];
   websites?: IGDBWebsite[];
+  hypes?: number;
+  follows?: number;
 }
 
 export interface GameRelease {
@@ -32,6 +34,8 @@ export interface GameRelease {
   platforms: string[];
   steamAppId: string | null;
   websiteUrl: string | null;
+  hypes: number;
+  follows: number;
 }
 
 export interface SteamReviewSummary {
@@ -43,6 +47,7 @@ export interface SteamReviewSummary {
 
 export interface GameReleaseWithReviews extends GameRelease {
   steamReviews: SteamReviewSummary | null;
+  steamDescription: string | null;
 }
 
 export interface MovieRelease {

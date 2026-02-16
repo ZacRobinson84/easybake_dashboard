@@ -16,6 +16,7 @@ interface GameRelease {
     totalReviews: number;
     reviewScoreDesc: string;
   } | null;
+  steamDescription: string | null;
 }
 
 export default function Gaming() {
@@ -87,6 +88,7 @@ export default function Gaming() {
               steamAppId={game.steamAppId}
               websiteUrl={game.websiteUrl}
               steamReviews={game.steamReviews}
+              steamDescription={game.steamDescription}
             />
           ))}
         </div>

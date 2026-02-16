@@ -5,7 +5,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { fetchTodayReleases } from './igdb.ts';
-import { fetchAllSteamReviews } from './steam.ts';
+import { fetchAllSteamReviews, fetchAllSteamDescriptions, backfillSteamAppIds } from './steam.ts';
 import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, searchMovies } from './tmdb.ts';
 import fs from 'fs';
 import path from 'path';
@@ -176,25 +176,27 @@ app.get('/api/gaming/releases', async (_req, res) => {
     const releases = await fetchTodayReleases(clientId, clientSecret);
     console.log(`Got ${releases.length} releases from IGDB`);
 
-    console.log('Fetching Steam reviews...');
-    const reviewsMap = await fetchAllSteamReviews(releases);
-    console.log(`Got reviews for ${reviewsMap.size} games`);
+    console.log('Backfilling Steam App IDs...');
+    await backfillSteamAppIds(releases);
+
+    console.log('Fetching Steam reviews and descriptions...');
+    const [reviewsMap, descriptionsMap] = await Promise.all([
+      fetchAllSteamReviews(releases),
+      fetchAllSteamDescriptions(releases),
+    ]);
+    console.log(`Got reviews for ${reviewsMap.size} games, descriptions for ${descriptionsMap.size} games`);
 
     const enriched: GameReleaseWithReviews[] = releases.map((game) => ({
       ...game,
       steamReviews: game.steamAppId ? (reviewsMap.get(game.steamAppId) ?? null) : null,
+      steamDescription: game.steamAppId ? (descriptionsMap.get(game.steamAppId) ?? null) : null,
     }));
 
     enriched.sort((a, b) => {
-      const aHasReviews = a.steamReviews !== null;
-      const bHasReviews = b.steamReviews !== null;
+      const aPopularity = (a.hypes ?? 0) + (a.follows ?? 0);
+      const bPopularity = (b.hypes ?? 0) + (b.follows ?? 0);
 
-      if (aHasReviews && !bHasReviews) return -1;
-      if (!aHasReviews && bHasReviews) return 1;
-
-      if (aHasReviews && bHasReviews) {
-        return b.steamReviews!.totalReviews - a.steamReviews!.totalReviews;
-      }
+      if (aPopularity !== bPopularity) return bPopularity - aPopularity;
 
       return a.name.localeCompare(b.name);
     });

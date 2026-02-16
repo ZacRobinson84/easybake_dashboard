@@ -119,40 +119,42 @@ export default function Movies() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <Clapperboard className="h-6 w-6 text-indigo-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-white">Movies</h1>
-            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
-          </div>
+      <div className="mb-4 flex items-end gap-0">
+        <div
+          className="inline-block rounded-xl bg-[#BB7044]/15 p-4 pr-10"
+          style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}
+        >
+          <h1 className="inline-flex items-center gap-2 text-2xl font-bold text-white">
+            Movies <Clapperboard className="h-5 w-5 text-indigo-600" />
+          </h1>
+          {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
         </div>
-
-        {/* Tab pills */}
-        <div className="flex gap-2 sm:ml-auto">
-          <button
-            onClick={() => setActiveTab('releases')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
-              activeTab === 'releases'
-                ? 'bg-indigo-600 text-white'
-                : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
-            }`}
-          >
-            This Week's Releases
-          </button>
-          <button
-            onClick={() => setActiveTab('in-theatres')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
-              activeTab === 'in-theatres'
-                ? 'bg-indigo-600 text-white'
-                : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
-            }`}
-          >
-            In Theatres Now
-          </button>
-        </div>
+        <div className="h-px flex-1 self-end" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.28) 3%, rgba(255,255,255,0.28) 97%, rgba(255,255,255,0))' }} />
       </div>
-      <div className="mb-6 h-px bg-white/15" />
+
+      {/* Tab pills */}
+      <div className="mb-6 flex gap-2">
+        <button
+          onClick={() => setActiveTab('releases')}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+            activeTab === 'releases'
+              ? 'bg-indigo-600 text-white'
+              : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
+          }`}
+        >
+          This Week's Releases
+        </button>
+        <button
+          onClick={() => setActiveTab('in-theatres')}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+            activeTab === 'in-theatres'
+              ? 'bg-indigo-600 text-white'
+              : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
+          }`}
+        >
+          In Theatres Now
+        </button>
+      </div>
 
       {/* Mobile dot indicators */}
       <div className="mb-4 flex justify-center gap-2 md:hidden">

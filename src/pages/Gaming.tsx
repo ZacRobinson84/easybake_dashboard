@@ -58,14 +58,18 @@ export default function Gaming() {
 
   return (
     <div className="p-6 md:p-10">
-      <div className="mb-6 flex items-center gap-3">
-        <Calendar className="h-6 w-6 text-indigo-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Today's Game Releases</h1>
+      <div className="mb-6 flex items-end gap-0">
+        <div
+          className="inline-block rounded-xl bg-[#BB7044]/15 p-4 pr-10"
+          style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}
+        >
+          <h1 className="inline-flex items-center gap-2 text-2xl font-bold text-white">
+            Today's Game Releases <Calendar className="h-5 w-5 text-indigo-600" />
+          </h1>
           <p className="text-sm text-gray-500">{today}</p>
         </div>
+        <div className="h-px flex-1 self-end" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.28) 3%, rgba(255,255,255,0.28) 97%, rgba(255,255,255,0))' }} />
       </div>
-      <div className="mb-6 h-px bg-white/15" />
 
       {loading && (
         <div className="flex items-center justify-center py-20">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2 } from 'lucide-react';
 import GameCard from '../components/gaming/GameCard';
+import { useAuth } from '../AuthContext';
 
 interface GameRelease {
   id: number;
@@ -18,12 +19,13 @@ interface GameRelease {
 }
 
 export default function Gaming() {
+  const { authFetch } = useAuth();
   const [games, setGames] = useState<GameRelease[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/gaming/releases')
+    authFetch('/api/gaming/releases')
       .then((res) => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();

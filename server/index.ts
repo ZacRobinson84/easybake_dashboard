@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews } from './steam.ts';
 import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, searchMovies } from './tmdb.ts';
@@ -27,9 +30,17 @@ const spotifyClientId = process.env['SPOTIFY_CLIENT_ID'];
 const spotifyClientSecret = process.env['SPOTIFY_CLIENT_SECRET'];
 const openweatherApiKey = process.env['OPENWEATHER_API_KEY'];
 
+const jwtSecret = process.env['JWT_SECRET'];
+const dashboardPasswordHash = process.env['DASHBOARD_PASSWORD_HASH'];
+
 if (!clientId || !clientSecret) {
   console.error('Missing required environment variables: TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET');
   console.error('Copy .env.example to .env and fill in your Twitch credentials.');
+  process.exit(1);
+}
+
+if (!jwtSecret || !dashboardPasswordHash) {
+  console.error('Missing required environment variables: JWT_SECRET and DASHBOARD_PASSWORD_HASH');
   process.exit(1);
 }
 
@@ -37,6 +48,48 @@ const app = express();
 
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
 app.use(express.json());
+
+// --- Auth routes & middleware ---
+
+const PUBLIC_PATHS = ['/api/health', '/api/auth/login'];
+
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+  const { password } = req.body;
+  if (!password || typeof password !== 'string') {
+    res.status(400).json({ error: 'Password is required' });
+    return;
+  }
+  const valid = await bcrypt.compare(password, dashboardPasswordHash);
+  if (!valid) {
+    res.status(401).json({ error: 'Invalid password' });
+    return;
+  }
+  const token = jwt.sign({}, jwtSecret, { expiresIn: '7d' });
+  res.json({ token });
+});
+
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok' });
+});
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (PUBLIC_PATHS.includes(req.path)) {
+    next();
+    return;
+  }
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Missing or invalid token' });
+    return;
+  }
+  const token = authHeader.slice(7);
+  try {
+    jwt.verify(token, jwtSecret);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Token expired or invalid' });
+  }
+});
 
 // --- Spotify OAuth routes ---
 

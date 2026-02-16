@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import ColorThief from 'colorthief';
 import { Film, Skull, X } from 'lucide-react';
+import { useAuth } from '../../AuthContext';
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255;
@@ -52,6 +53,7 @@ interface MovieCardProps {
 }
 
 export default function MovieCard({ title, posterUrl, director, directorId, cast, tmdbUrl, isHorror }: MovieCardProps) {
+  const { authFetch } = useAuth();
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
   const [flipped, setFlipped] = useState(false);
@@ -79,7 +81,7 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
     if (!directorId) return;
     if (!flipped && filmography === null && !filmoLoading) {
       setFilmoLoading(true);
-      fetch(`/api/movies/director/${directorId}/filmography`)
+      authFetch(`/api/movies/director/${directorId}/filmography`)
         .then((res) => res.json())
         .then((data: DirectorFilm[]) => {
           setFilmography(data);

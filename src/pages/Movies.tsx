@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Clapperboard, Loader2 } from 'lucide-react';
 import MovieCard from '../components/movies/MovieCard';
+import { useAuth } from '../AuthContext';
 
 interface MovieRelease {
   id: number;
@@ -20,6 +21,7 @@ interface MovieRelease {
 type Tab = 'releases' | 'in-theatres';
 
 export default function Movies() {
+  const { authFetch } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('releases');
 
   // Releases state
@@ -38,7 +40,7 @@ export default function Movies() {
   const touchStartX = useRef(0);
 
   useEffect(() => {
-    fetch('/api/movies/upcoming')
+    authFetch('/api/movies/upcoming')
       .then((res) => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
@@ -68,7 +70,7 @@ export default function Movies() {
     if (activeTab !== 'in-theatres' || nowPlayingFetched.current) return;
     nowPlayingFetched.current = true;
     setNowPlayingLoading(true);
-    fetch('/api/movies/now-playing')
+    authFetch('/api/movies/now-playing')
       .then((res) => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();

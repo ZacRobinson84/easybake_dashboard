@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, MapPin, Film, Search, X } from 'lucide-react';
+import { useAuth } from '../AuthContext';
 
 interface ForecastEntry {
   dt: number;
@@ -34,6 +35,7 @@ const FALLBACK_LAT = 44.98;
 const FALLBACK_LON = -64.13;
 
 export default function Home() {
+  const { authFetch } = useAuth();
   const [days, setDays] = useState<DaySummary[]>([]);
   const [cityName, setCityName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export default function Home() {
 
   useEffect(() => {
     const fetchWeather = (lat: number, lon: number) => {
-      fetch(`/api/weather/forecast?lat=${lat}&lon=${lon}`)
+      authFetch(`/api/weather/forecast?lat=${lat}&lon=${lon}`)
         .then((res) => {
           if (!res.ok) throw new Error(`Server error: ${res.status}`);
           return res.json();
@@ -129,11 +131,11 @@ export default function Home() {
 
   // Fetch watched movies on mount
   useEffect(() => {
-    fetch('/api/movies/watched')
+    authFetch('/api/movies/watched')
       .then((res) => res.json())
       .then(setWatchedMovies)
       .catch(() => {});
-  }, []);
+  }, [authFetch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -156,7 +158,7 @@ export default function Home() {
     }
     setSearching(true);
     debounceRef.current = setTimeout(() => {
-      fetch(`/api/movies/search?q=${encodeURIComponent(q.trim())}`)
+      authFetch(`/api/movies/search?q=${encodeURIComponent(q.trim())}`)
         .then((res) => res.json())
         .then((results: MovieSearchResult[]) => {
           setSearchResults(results.slice(0, 8));
@@ -165,10 +167,10 @@ export default function Home() {
         })
         .catch(() => setSearching(false));
     }, 400);
-  }, []);
+  }, [authFetch]);
 
   const addMovie = (movie: MovieSearchResult) => {
-    fetch('/api/movies/watched', {
+    authFetch('/api/movies/watched', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: movie.id, title: movie.title, posterUrl: movie.posterUrl, releaseDate: movie.releaseDate }),
@@ -182,7 +184,7 @@ export default function Home() {
   };
 
   const removeMovie = (id: number) => {
-    fetch(`/api/movies/watched/${id}`, { method: 'DELETE' })
+    authFetch(`/api/movies/watched/${id}`, { method: 'DELETE' })
       .then((res) => res.json())
       .then(setWatchedMovies)
       .catch(() => {});

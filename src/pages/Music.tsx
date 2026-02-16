@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Music2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import AlbumCard from '../components/music/AlbumCard';
 import type { PlaybackState } from '../components/music/AlbumCard';
+import { useAuth } from '../AuthContext';
 
 interface AlbumRelease {
   id: string;
@@ -52,6 +53,7 @@ interface TopChartsResponse {
 type Tab = 'releases' | 'top-charts';
 
 export default function Music() {
+  const { authFetch } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('releases');
 
   // Releases state
@@ -121,7 +123,7 @@ export default function Music() {
     setArtistState(artist, 'loading');
 
     try {
-      const res = await fetch(`/api/spotify/preview?artist=${encodeURIComponent(artist)}`);
+      const res = await authFetch(`/api/spotify/preview?artist=${encodeURIComponent(artist)}`);
       const data = await res.json() as { trackName?: string; previewUrl?: string; error?: string };
 
       if (!data.previewUrl) {
@@ -146,17 +148,17 @@ export default function Music() {
       setCurrentArtist(null);
       setTimeout(() => setArtistState(artist, 'idle'), 2000);
     }
-  }, [currentArtist, setArtistState]);
+  }, [currentArtist, setArtistState, authFetch]);
 
   useEffect(() => {
-    fetch('/api/spotify/status')
+    authFetch('/api/spotify/status')
       .then((res) => res.json())
       .then((data: { authenticated: boolean }) => setSpotifyConnected(data.authenticated))
       .catch(() => {});
-  }, []);
+  }, [authFetch]);
 
   useEffect(() => {
-    fetch('/api/music/upcoming')
+    authFetch('/api/music/upcoming')
       .then((res) => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
@@ -186,7 +188,7 @@ export default function Music() {
     if (activeTab !== 'top-charts' || chartsFetched.current) return;
     chartsFetched.current = true;
     setChartsLoading(true);
-    fetch('/api/music/charts')
+    authFetch('/api/music/charts')
       .then((res) => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
@@ -308,7 +310,7 @@ export default function Music() {
               ) : (
                 <button
                   onClick={() => {
-                    fetch('/api/spotify/logout', { method: 'POST' })
+                    authFetch('/api/spotify/logout', { method: 'POST' })
                       .then(() => {
                         setSpotifyConnected(false);
                         window.location.reload();

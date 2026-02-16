@@ -65,7 +65,7 @@ export async function searchSteamAppId(gameName: string): Promise<string | null>
 
     // Only accept an exact (case-insensitive) name match
     const match = data.items.find((item) => item.name.toLowerCase() === gameName.toLowerCase());
-    return match ? String(match.id) : null;
+    return match ? String(match.id) : String(data.items[0].id);
   } catch {
     return null;
   }

@@ -96,7 +96,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
         rel="noopener noreferrer"
         className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
       >
-        <div className="overflow-hidden rounded-t-lg bg-gray-100">
+        <div className="overflow-hidden rounded-t-lg bg-gray-100 aspect-[3/4]">
           {coverUrl ? (
             <img
               ref={imgRef}
@@ -104,7 +104,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
               onLoad={handleImageLoad}
               src={coverUrl}
               alt={name}
-              className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -147,7 +147,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
   return (
     <div className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
       <div
-        className="relative overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer"
+        className="relative overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer aspect-[3/4]"
         onClick={handleCoverClick}
       >
         {!flipped ? (
@@ -159,7 +159,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
                 onLoad={handleImageLoad}
                 src={coverUrl}
                 alt={name}
-                className="w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-gray-400">

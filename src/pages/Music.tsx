@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Music2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Music2, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import AlbumCard from '../components/music/AlbumCard';
 import type { PlaybackState } from '../components/music/AlbumCard';
 import { useAuth } from '../AuthContext';
@@ -157,6 +157,14 @@ export default function Music() {
       .catch(() => {});
   }, [authFetch]);
 
+  const handleDismiss = async (id: string) => {
+    if (!window.confirm('Remove this card?')) return;
+    try {
+      await authFetch(`/api/dismissed/album/${id}`, { method: 'POST' });
+      setAlbums((prev) => prev.filter((a) => a.id !== id));
+    } catch {}
+  };
+
   useEffect(() => {
     authFetch('/api/music/upcoming')
       .then((res) => {
@@ -235,15 +243,22 @@ export default function Music() {
   const gridClasses = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10';
 
   const renderAlbumCard = (album: AlbumRelease) => (
-    <AlbumCard
-      key={album.id}
-      title={album.title}
-      artist={album.artist}
-      coverUrl={album.coverUrl}
-      type={album.type}
-      playbackState={getPlaybackState(album.artist)}
-      onTogglePlay={handleTogglePlay}
-    />
+    <div key={album.id} className="group relative h-full">
+      <button
+        onClick={() => handleDismiss(album.id)}
+        className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
+      >
+        <X className="h-3 w-3" />
+      </button>
+      <AlbumCard
+        title={album.title}
+        artist={album.artist}
+        coverUrl={album.coverUrl}
+        type={album.type}
+        playbackState={getPlaybackState(album.artist)}
+        onTogglePlay={handleTogglePlay}
+      />
+    </div>
   );
 
   const formatPlaycount = (n: number) => {

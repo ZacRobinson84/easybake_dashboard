@@ -101,7 +101,7 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
     : undefined;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
+    <div className="group flex h-full flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
       <div
         className="relative overflow-hidden rounded-t-lg bg-gray-100 aspect-[2/3] cursor-pointer"
         onClick={handlePosterClick}

@@ -94,7 +94,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
+        className="group flex h-full flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:border-indigo-200 hover:shadow-lg"
       >
         <div className="overflow-hidden rounded-t-lg bg-gray-100 aspect-[3/4]">
           {coverUrl ? (
@@ -145,7 +145,7 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
 
   // Cards with a description: cover area is clickable to flip, info section links to Steam
   return (
-    <div className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
+    <div className="group flex h-full flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg">
       <div
         className="relative overflow-hidden rounded-t-lg bg-gray-100 cursor-pointer aspect-[3/4]"
         onClick={handleCoverClick}

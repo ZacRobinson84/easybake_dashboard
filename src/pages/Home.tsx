@@ -322,7 +322,7 @@ export default function Home() {
               <div key={movie.id} className="group relative">
                 <button
                   onClick={() => removeMovie(movie.id)}
-                  className="absolute -right-1.5 -top-1.5 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600 transition-colors"
+                  className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>

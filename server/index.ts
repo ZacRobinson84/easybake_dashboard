@@ -20,7 +20,7 @@ import {
   clearTokens,
   fetchArtistTopPreview,
 } from './spotify.ts';
-import { initDb, hasDatabase, dbGetWatchedMovies, dbInsertWatchedMovie, dbDeleteWatchedMovie } from './db.ts';
+import { initDb, hasDatabase, dbGetWatchedMovies, dbInsertWatchedMovie, dbDeleteWatchedMovie, dbGetDismissedCards, dbDismissCard } from './db.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
 const clientId = process.env['TWITCH_CLIENT_ID'];
@@ -170,6 +170,30 @@ app.get('/api/spotify/preview', async (req, res) => {
   }
 });
 
+// --- Dismissed Cards ---
+
+app.get('/api/dismissed/:category', async (req, res) => {
+  const category = req.params['category'] as string;
+  if (!['game', 'movie', 'album'].includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
+  const ids = await dbGetDismissedCards(category);
+  res.json(ids);
+});
+
+app.post('/api/dismissed/:category/:itemId', async (req, res) => {
+  const category = req.params['category'] as string;
+  const itemId = req.params['itemId'] as string;
+  if (!['game', 'movie', 'album'].includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
+  await dbDismissCard(category, itemId);
+  const ids = await dbGetDismissedCards(category);
+  res.json(ids);
+});
+
 app.get('/api/gaming/releases', async (_req, res) => {
   try {
     console.log('Fetching IGDB releases...');
@@ -201,7 +225,10 @@ app.get('/api/gaming/releases', async (_req, res) => {
       return a.name.localeCompare(b.name);
     });
 
-    res.json(enriched);
+    const dismissedGames = new Set(await dbGetDismissedCards('game'));
+    const filtered = enriched.filter((g) => !dismissedGames.has(String(g.id)));
+
+    res.json(filtered);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching releases:', message);
@@ -219,7 +246,9 @@ app.get('/api/movies/upcoming', async (_req, res) => {
     console.log('Fetching upcoming Friday movies from TMDB...');
     const movies = await fetchUpcomingFridayMovies(tmdbApiKey);
     console.log(`Got ${movies.length} movies from TMDB`);
-    res.json(movies);
+    const dismissedMovies = new Set(await dbGetDismissedCards('movie'));
+    const filtered = movies.filter((m: { id: number }) => !dismissedMovies.has(String(m.id)));
+    res.json(filtered);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching movies:', message);
@@ -236,7 +265,9 @@ app.get('/api/movies/now-playing', async (_req, res) => {
     console.log('Fetching now-playing movies from TMDB...');
     const movies = await fetchNowPlayingMovies(tmdbApiKey);
     console.log(`Got ${movies.length} now-playing movies from TMDB`);
-    res.json(movies);
+    const dismissedMovies = new Set(await dbGetDismissedCards('movie'));
+    const filtered = movies.filter((m: { id: number }) => !dismissedMovies.has(String(m.id)));
+    res.json(filtered);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching now-playing movies:', message);
@@ -331,7 +362,9 @@ app.get('/api/music/upcoming', async (_req, res) => {
       }
     }
 
-    res.json(albums);
+    const dismissedAlbums = new Set(await dbGetDismissedCards('album'));
+    const filtered = albums.filter((a) => !dismissedAlbums.has(String(a.id)));
+    res.json(filtered);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching albums:', message);

@@ -35,6 +35,15 @@ export async function initDb(): Promise<void> {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS dismissed_cards (
+      category TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      dismissed_at TEXT NOT NULL,
+      PRIMARY KEY (category, item_id)
+    )
+  `);
+
   console.log('Database tables initialized');
 }
 
@@ -104,6 +113,24 @@ export async function dbSaveTokens(tokens: SpotifyTokens): Promise<void> {
 export async function dbClearTokens(): Promise<void> {
   if (!pool) return;
   await pool.query('DELETE FROM spotify_tokens WHERE id = 1');
+}
+
+// --- Dismissed Cards ---
+
+export async function dbGetDismissedCards(category: string): Promise<string[]> {
+  if (!pool) return [];
+  const { rows } = await pool.query('SELECT item_id FROM dismissed_cards WHERE category = $1', [category]);
+  return rows.map((r: { item_id: string }) => r.item_id);
+}
+
+export async function dbDismissCard(category: string, itemId: string): Promise<void> {
+  if (!pool) return;
+  await pool.query(
+    `INSERT INTO dismissed_cards (category, item_id, dismissed_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (category, item_id) DO NOTHING`,
+    [category, itemId, new Date().toISOString()],
+  );
 }
 
 export async function dbIsAuthenticated(): Promise<boolean | null> {

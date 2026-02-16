@@ -73,7 +73,7 @@ export default function AlbumCard({ title, artist, coverUrl, type, playbackState
 
   return (
     <div
-      className="group flex flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg cursor-pointer"
+      className="group flex h-full flex-col overflow-hidden rounded-lg ring-2 ring-white/70 bg-white transition-all hover:shadow-lg cursor-pointer"
       onClick={() => onTogglePlay(artist)}
     >
       <div className="relative overflow-hidden rounded-t-lg bg-gray-100 aspect-[1/1]">

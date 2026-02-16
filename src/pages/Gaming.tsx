@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Calendar, Loader2 } from 'lucide-react';
+import { Calendar, Loader2, X } from 'lucide-react';
 import GameCard from '../components/gaming/GameCard';
 import { useAuth } from '../AuthContext';
 
@@ -41,6 +41,14 @@ export default function Gaming() {
       });
   }, []);
 
+  const handleDismiss = async (id: number) => {
+    if (!window.confirm('Remove this card?')) return;
+    try {
+      await authFetch(`/api/dismissed/game/${id}`, { method: 'POST' });
+      setGames((prev) => prev.filter((g) => g.id !== id));
+    } catch {}
+  };
+
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -80,16 +88,23 @@ export default function Gaming() {
       {!loading && !error && games.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
           {games.map((game) => (
-            <GameCard
-              key={game.id}
-              name={game.name}
-              coverUrl={game.coverUrl}
-              platforms={game.platforms}
-              steamAppId={game.steamAppId}
-              websiteUrl={game.websiteUrl}
-              steamReviews={game.steamReviews}
-              steamDescription={game.steamDescription}
-            />
+            <div key={game.id} className="group relative h-full">
+              <button
+                onClick={() => handleDismiss(game.id)}
+                className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+              <GameCard
+                name={game.name}
+                coverUrl={game.coverUrl}
+                platforms={game.platforms}
+                steamAppId={game.steamAppId}
+                websiteUrl={game.websiteUrl}
+                steamReviews={game.steamReviews}
+                steamDescription={game.steamDescription}
+              />
+            </div>
           ))}
         </div>
       )}

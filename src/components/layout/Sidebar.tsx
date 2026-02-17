@@ -13,6 +13,13 @@ const RAINBOW_COLORS = [
   '#f59e0b', // amber-500
 ]
 
+const NAV_COLORS: Record<string, { hover: string; active: string }> = {
+  '/':       { hover: 'hover:bg-amber-100 hover:text-amber-700',   active: 'bg-amber-500/75 text-white' },
+  '/movies': { hover: 'hover:bg-rose-100 hover:text-rose-700',     active: 'bg-rose-500/75 text-white' },
+  '/gaming': { hover: 'hover:bg-sky-100 hover:text-sky-700',       active: 'bg-sky-500/75 text-white' },
+  '/music':  { hover: 'hover:bg-emerald-100 hover:text-emerald-700', active: 'bg-emerald-500/75 text-white' },
+}
+
 export default function Sidebar({ navItems }: SidebarProps) {
   return (
     <div className="hidden md:flex relative w-64 flex-shrink-0">
@@ -50,13 +57,14 @@ export default function Sidebar({ navItems }: SidebarProps) {
               key={item.path}
               to={item.path}
               end={item.path === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={({ isActive }) => {
+                const colors = NAV_COLORS[item.path] || NAV_COLORS['/']
+                return `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-indigo-50 text-indigo-600'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    ? colors.active
+                    : `text-gray-600 ${colors.hover}`
                 }`
-              }
+              }}
             >
               <item.icon className="w-5 h-5" />
               {item.label}

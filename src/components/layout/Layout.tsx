@@ -12,7 +12,7 @@ export interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Home', path: '/', icon: Home },
   { label: 'Movies', path: '/movies', icon: Film },
-  { label: 'Gaming', path: '/gaming', icon: Gamepad2 },
+  { label: 'Games', path: '/gaming', icon: Gamepad2 },
   { label: 'Music', path: '/music', icon: Music },
 ]
 

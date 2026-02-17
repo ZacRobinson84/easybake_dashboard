@@ -64,7 +64,7 @@ export default function Gaming() {
           style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}
         >
           <h1 className="inline-flex items-center gap-2 text-2xl font-bold text-white">
-            Today's Game Releases <Calendar className="h-5 w-5 text-indigo-600" />
+            New Game Releases <Calendar className="h-5 w-5 text-indigo-600" />
           </h1>
           <p className="text-sm text-gray-500">{today}</p>
         </div>

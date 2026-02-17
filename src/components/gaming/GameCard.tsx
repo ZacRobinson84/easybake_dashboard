@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import ColorThief from 'colorthief';
-import { Gamepad2, ThumbsUp, X } from 'lucide-react';
+import { Gamepad2, ThumbsUp } from 'lucide-react';
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255;
@@ -174,16 +174,10 @@ export default function GameCard({ name, coverUrl, platforms, steamAppId, websit
             className="flex flex-col w-full h-full overflow-y-auto p-3"
             style={reversedGradientStyle ?? { background: 'linear-gradient(to top, #c4b5fd, #8b5cf6)' }}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <span className="text-[10px] font-semibold text-white/90 uppercase tracking-wide">
                 About
               </span>
-              <button
-                onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
-                className="flex-shrink-0 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white"
-              >
-                <X className="h-3 w-3" />
-              </button>
             </div>
             <p className="text-[11px] leading-relaxed text-white/90">
               {steamDescription}

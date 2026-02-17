@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import ColorThief from 'colorthief';
-import { Film, Skull, X } from 'lucide-react';
+import { Film, Skull } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
@@ -128,16 +128,10 @@ export default function MovieCard({ title, posterUrl, director, directorId, cast
             className="flex flex-col w-full h-full overflow-y-auto p-2"
             style={reversedGradientStyle ?? { background: 'linear-gradient(to top, #c4b5fd, #8b5cf6)' }}
           >
-            <div className="flex items-center justify-between mb-1">
+            <div className="mb-1">
               <span className="text-[10px] font-semibold text-white/90 uppercase tracking-wide truncate">
                 {director}'s Films
               </span>
-              <button
-                onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
-                className="flex-shrink-0 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white"
-              >
-                <X className="h-3 w-3" />
-              </button>
             </div>
             {filmoLoading ? (
               <div className="flex-1 flex items-center justify-center text-white/70 text-xs">Loading...</div>

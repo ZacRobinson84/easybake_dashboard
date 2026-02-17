@@ -70,9 +70,6 @@ export default function Music() {
   const chartsFetched = useRef(false);
   const [chartListIndex, setChartListIndex] = useState(0);
 
-  // Swipe tracking
-  const touchStartX = useRef(0);
-
   // Audio playback state
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentArtist, setCurrentArtist] = useState<string | null>(null);
@@ -221,17 +218,6 @@ export default function Music() {
     };
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
-      setActiveTab(diff > 0 ? 'top-charts' : 'releases');
-    }
-  };
-
   const spotifyAlbums = albums.filter((a) => a.inSpotifyLibrary);
   const otherAlbums = albums.filter((a) => !a.inSpotifyLibrary);
 
@@ -272,11 +258,7 @@ export default function Music() {
   const subtitle = activeTab === 'releases' ? fridayLabel : 'Most popular on Last.fm';
 
   return (
-    <div
-      className="p-6 md:p-10"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="p-6 md:p-10">
       <div className="mb-4 flex items-end gap-0">
         <div
           className="inline-block rounded-xl bg-[#BB7044]/15 p-4 pr-10"
@@ -294,7 +276,7 @@ export default function Music() {
       <div className="mb-6 flex items-center gap-2">
         <button
           onClick={() => setActiveTab('releases')}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+          className={`min-w-[7rem] text-center rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
             activeTab === 'releases'
               ? 'bg-indigo-600 text-white'
               : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
@@ -304,7 +286,7 @@ export default function Music() {
         </button>
         <button
           onClick={() => setActiveTab('top-charts')}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+          className={`min-w-[7rem] text-center rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
             activeTab === 'top-charts'
               ? 'bg-indigo-600 text-white'
               : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
@@ -342,20 +324,6 @@ export default function Music() {
             )}
           </>
         )}
-      </div>
-
-      {/* Mobile dot indicators */}
-      <div className="mb-4 flex justify-center gap-2 md:hidden">
-        <span
-          className={`h-2 w-2 rounded-full transition-colors ${
-            activeTab === 'releases' ? 'bg-indigo-600' : 'bg-gray-600'
-          }`}
-        />
-        <span
-          className={`h-2 w-2 rounded-full transition-colors ${
-            activeTab === 'top-charts' ? 'bg-indigo-600' : 'bg-gray-600'
-          }`}
-        />
       </div>
 
       {currentLoading && (

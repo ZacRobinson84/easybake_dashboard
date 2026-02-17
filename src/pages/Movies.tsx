@@ -45,9 +45,6 @@ export default function Movies() {
     } catch {}
   };
 
-  // Swipe tracking
-  const touchStartX = useRef(0);
-
   useEffect(() => {
     authFetch('/api/movies/upcoming')
       .then((res) => {
@@ -94,17 +91,6 @@ export default function Movies() {
       });
   }, [activeTab]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
-      setActiveTab(diff > 0 ? 'in-theatres' : 'releases');
-    }
-  };
-
   const currentMovies = activeTab === 'releases' ? movies : nowPlaying;
   const currentLoading = activeTab === 'releases' ? loading : nowPlayingLoading;
   const currentError = activeTab === 'releases' ? error : nowPlayingError;
@@ -114,18 +100,14 @@ export default function Movies() {
     : 'No movies currently in theatres';
 
   return (
-    <div
-      className="p-6 md:p-10"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="p-6 md:p-10">
       <div className="mb-4 flex items-end gap-0">
         <div
           className="inline-block rounded-xl bg-[#BB7044]/15 p-4 pr-10"
           style={{ clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' }}
         >
           <h1 className="inline-flex items-center gap-2 text-2xl font-bold text-white">
-            Movies <Clapperboard className="h-5 w-5 text-indigo-600" />
+            New Movie Releases <Clapperboard className="h-5 w-5 text-indigo-600" />
           </h1>
           {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
         </div>
@@ -136,7 +118,7 @@ export default function Movies() {
       <div className="mb-6 flex gap-2">
         <button
           onClick={() => setActiveTab('releases')}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+          className={`min-w-[7rem] text-center rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
             activeTab === 'releases'
               ? 'bg-indigo-600 text-white'
               : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
@@ -146,7 +128,7 @@ export default function Movies() {
         </button>
         <button
           onClick={() => setActiveTab('in-theatres')}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+          className={`min-w-[7rem] text-center rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
             activeTab === 'in-theatres'
               ? 'bg-indigo-600 text-white'
               : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
@@ -154,20 +136,6 @@ export default function Movies() {
         >
           In Theatres Now
         </button>
-      </div>
-
-      {/* Mobile dot indicators */}
-      <div className="mb-4 flex justify-center gap-2 md:hidden">
-        <span
-          className={`h-2 w-2 rounded-full transition-colors ${
-            activeTab === 'releases' ? 'bg-indigo-600' : 'bg-gray-600'
-          }`}
-        />
-        <span
-          className={`h-2 w-2 rounded-full transition-colors ${
-            activeTab === 'in-theatres' ? 'bg-indigo-600' : 'bg-gray-600'
-          }`}
-        />
       </div>
 
       {currentLoading && (

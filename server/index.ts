@@ -408,7 +408,6 @@ app.get('/api/weather/forecast', async (req, res) => {
 // --- Watched Items (unified: movie | tv | album | book) ---
 
 const VALID_CATEGORIES = ['movie', 'tv', 'album', 'book'] as const;
-type Category = (typeof VALID_CATEGORIES)[number];
 
 const OLD_WATCHED_FILE = path.join(process.cwd(), 'data', 'watched-movies.json');
 const WATCHED_ITEMS_FILE = path.join(process.cwd(), 'data', 'watched-items.json');

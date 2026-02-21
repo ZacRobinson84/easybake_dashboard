@@ -6,11 +6,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews, fetchAllSteamDescriptions, backfillSteamAppIds } from './steam.ts';
-import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, searchMovies } from './tmdb.ts';
+import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, searchMovies, searchTV } from './tmdb.ts';
 import fs from 'fs';
 import path from 'path';
 import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
-import { fetchAllArtistPopularity, fetchTopCharts } from './lastfm.ts';
+import { fetchAllArtistPopularity, fetchTopCharts, searchAlbums } from './lastfm.ts';
+import { searchBooks } from './openlibrary.ts';
 import {
   getAuthUrl,
   exchangeCodeForTokens,
@@ -20,7 +21,8 @@ import {
   clearTokens,
   fetchArtistTopPreview,
 } from './spotify.ts';
-import { initDb, hasDatabase, dbGetWatchedMovies, dbInsertWatchedMovie, dbDeleteWatchedMovie, dbGetDismissedCards, dbDismissCard } from './db.ts';
+import { initDb, hasDatabase, dbGetWatchedItems, dbInsertWatchedItem, dbDeleteWatchedItem, dbGetDismissedCards, dbDismissCard } from './db.ts';
+import type { WatchedItem } from './db.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
 const clientId = process.env['TWITCH_CLIENT_ID'];
@@ -403,9 +405,15 @@ app.get('/api/weather/forecast', async (req, res) => {
   }
 });
 
-// --- Watched Movies ---
+// --- Watched Items (unified: movie | tv | album | book) ---
 
-interface WatchedMovie {
+const VALID_CATEGORIES = ['movie', 'tv', 'album', 'book'] as const;
+type Category = (typeof VALID_CATEGORIES)[number];
+
+const OLD_WATCHED_FILE = path.join(process.cwd(), 'data', 'watched-movies.json');
+const WATCHED_ITEMS_FILE = path.join(process.cwd(), 'data', 'watched-items.json');
+
+interface LegacyWatchedMovie {
   id: number;
   title: string;
   posterUrl: string | null;
@@ -413,75 +421,133 @@ interface WatchedMovie {
   addedAt: string;
 }
 
-const WATCHED_FILE = path.join(process.cwd(), 'data', 'watched-movies.json');
-
-function readWatchedMovies(): WatchedMovie[] {
+function readWatchedItems(category: string): WatchedItem[] {
   try {
-    return JSON.parse(fs.readFileSync(WATCHED_FILE, 'utf-8'));
+    const all = JSON.parse(fs.readFileSync(WATCHED_ITEMS_FILE, 'utf-8')) as WatchedItem[];
+    return all.filter((i) => i.category === category);
   } catch {
+    // Fall back to old watched-movies.json for movie category
+    if (category === 'movie') {
+      try {
+        const old = JSON.parse(fs.readFileSync(OLD_WATCHED_FILE, 'utf-8')) as LegacyWatchedMovie[];
+        return old.map((m) => ({
+          id: String(m.id),
+          category: 'movie',
+          title: m.title,
+          subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : '',
+          imageUrl: m.posterUrl,
+          addedAt: m.addedAt,
+        }));
+      } catch {
+        return [];
+      }
+    }
     return [];
   }
 }
 
-function writeWatchedMovies(movies: WatchedMovie[]): void {
-  const dir = path.dirname(WATCHED_FILE);
+function writeWatchedItem(item: WatchedItem): void {
+  const dir = path.dirname(WATCHED_ITEMS_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(WATCHED_FILE, JSON.stringify(movies, null, 2));
+  let all: WatchedItem[] = [];
+  try {
+    all = JSON.parse(fs.readFileSync(WATCHED_ITEMS_FILE, 'utf-8'));
+  } catch {
+    // Start fresh — but try migrating old movies first
+    if (fs.existsSync(OLD_WATCHED_FILE)) {
+      try {
+        const old = JSON.parse(fs.readFileSync(OLD_WATCHED_FILE, 'utf-8')) as LegacyWatchedMovie[];
+        all = old.map((m) => ({
+          id: String(m.id),
+          category: 'movie',
+          title: m.title,
+          subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : '',
+          imageUrl: m.posterUrl,
+          addedAt: m.addedAt,
+        }));
+      } catch { /* ignore */ }
+    }
+  }
+  const exists = all.some((i) => i.category === item.category && i.id === item.id);
+  if (!exists) all.push(item);
+  fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(all, null, 2));
 }
 
-app.get('/api/movies/watched', async (_req, res) => {
+function deleteWatchedItem(category: string, id: string): void {
+  let all: WatchedItem[] = [];
+  try {
+    all = JSON.parse(fs.readFileSync(WATCHED_ITEMS_FILE, 'utf-8'));
+  } catch {
+    return;
+  }
+  all = all.filter((i) => !(i.category === category && i.id === id));
+  fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(all, null, 2));
+}
+
+app.get('/api/watched/:category', async (req, res) => {
+  const category = req.params['category'] as string;
+  if (!(VALID_CATEGORIES as readonly string[]).includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
   if (hasDatabase()) {
-    const movies = await dbGetWatchedMovies();
-    if (movies) {
-      movies.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''));
-      res.json(movies);
+    const items = await dbGetWatchedItems(category);
+    if (items) {
+      res.json(items);
       return;
     }
   }
-  const movies = readWatchedMovies();
-  movies.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''));
-  res.json(movies);
+  res.json(readWatchedItems(category));
 });
 
-app.post('/api/movies/watched', async (req, res) => {
-  const { id, title, posterUrl, releaseDate } = req.body;
+app.post('/api/watched/:category', async (req, res) => {
+  const category = req.params['category'] as string;
+  if (!(VALID_CATEGORIES as readonly string[]).includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
+  const { id, title, subtitle, imageUrl } = req.body;
   if (!id || !title) {
     res.status(400).json({ error: 'Missing id or title' });
     return;
   }
-  const movie: WatchedMovie = { id, title, posterUrl: posterUrl ?? null, releaseDate: releaseDate ?? '', addedAt: new Date().toISOString() };
+  const item: WatchedItem = {
+    id: String(id),
+    category,
+    title,
+    subtitle: subtitle ?? '',
+    imageUrl: imageUrl ?? null,
+    addedAt: new Date().toISOString(),
+  };
 
   if (hasDatabase()) {
-    await dbInsertWatchedMovie(movie);
-    const movies = await dbGetWatchedMovies();
-    res.json(movies ?? []);
+    await dbInsertWatchedItem(item);
+    const items = await dbGetWatchedItems(category);
+    res.json(items ?? []);
     return;
   }
 
-  const movies = readWatchedMovies();
-  if (movies.some((m) => m.id === id)) {
-    res.json(movies);
-    return;
-  }
-  movies.push(movie);
-  writeWatchedMovies(movies);
-  res.json(movies);
+  writeWatchedItem(item);
+  res.json(readWatchedItems(category));
 });
 
-app.delete('/api/movies/watched/:id', async (req, res) => {
-  const movieId = Number(req.params['id']);
-
-  if (hasDatabase()) {
-    await dbDeleteWatchedMovie(movieId);
-    const movies = await dbGetWatchedMovies();
-    res.json(movies ?? []);
+app.delete('/api/watched/:category/:id', async (req, res) => {
+  const category = req.params['category'] as string;
+  const id = req.params['id'] as string;
+  if (!(VALID_CATEGORIES as readonly string[]).includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
     return;
   }
 
-  let movies = readWatchedMovies();
-  movies = movies.filter((m) => m.id !== movieId);
-  writeWatchedMovies(movies);
-  res.json(movies);
+  if (hasDatabase()) {
+    await dbDeleteWatchedItem(category, id);
+    const items = await dbGetWatchedItems(category);
+    res.json(items ?? []);
+    return;
+  }
+
+  deleteWatchedItem(category, id);
+  res.json(readWatchedItems(category));
 });
 
 app.get('/api/movies/search', async (req, res) => {
@@ -504,10 +570,88 @@ app.get('/api/movies/search', async (req, res) => {
   }
 });
 
+app.get('/api/tv/search', async (req, res) => {
+  if (!tmdbApiKey) {
+    res.status(500).json({ error: 'TMDB_API_KEY not configured' });
+    return;
+  }
+  const q = req.query['q'] as string | undefined;
+  if (!q) {
+    res.status(400).json({ error: 'Missing q parameter' });
+    return;
+  }
+  try {
+    const results = await searchTV(tmdbApiKey, q);
+    res.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error searching TV shows:', message);
+    res.status(500).json({ error: 'Failed to search TV shows' });
+  }
+});
+
+app.get('/api/albums/search', async (req, res) => {
+  if (!lastfmApiKey) {
+    res.status(500).json({ error: 'LASTFM_CLIENT_ID not configured' });
+    return;
+  }
+  const q = req.query['q'] as string | undefined;
+  if (!q) {
+    res.status(400).json({ error: 'Missing q parameter' });
+    return;
+  }
+  try {
+    const results = await searchAlbums(lastfmApiKey, q);
+    res.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error searching albums:', message);
+    res.status(500).json({ error: 'Failed to search albums' });
+  }
+});
+
+app.get('/api/books/search', async (req, res) => {
+  const q = req.query['q'] as string | undefined;
+  if (!q) {
+    res.status(400).json({ error: 'Missing q parameter' });
+    return;
+  }
+  try {
+    const results = await searchBooks(q);
+    res.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error searching books:', message);
+    res.status(500).json({ error: 'Failed to search books' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 
 (async () => {
   await initDb();
+
+  // JSON file migration: copy watched-movies.json into watched-items.json if needed
+  if (fs.existsSync(OLD_WATCHED_FILE) && !fs.existsSync(WATCHED_ITEMS_FILE)) {
+    try {
+      const old = JSON.parse(fs.readFileSync(OLD_WATCHED_FILE, 'utf-8')) as LegacyWatchedMovie[];
+      const migrated: WatchedItem[] = old.map((m) => ({
+        id: String(m.id),
+        category: 'movie',
+        title: m.title,
+        subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : '',
+        imageUrl: m.posterUrl,
+        addedAt: m.addedAt,
+      }));
+      const dir = path.dirname(WATCHED_ITEMS_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(migrated, null, 2));
+      console.log(`Migrated ${migrated.length} movies from watched-movies.json to watched-items.json`);
+    } catch (err) {
+      console.error('Failed to migrate watched-movies.json:', err);
+    }
+  }
+
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });

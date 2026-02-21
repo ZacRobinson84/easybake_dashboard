@@ -305,6 +305,55 @@ export async function fetchTopCharts(apiKey: string): Promise<TopChartsResponse>
   return result;
 }
 
+export interface AlbumSearchResult {
+  id: string; // composite "artist::albumName"
+  title: string;
+  subtitle: string; // artist name
+  imageUrl: string | null;
+  releaseDate: string;
+}
+
+export async function searchAlbums(apiKey: string, query: string): Promise<AlbumSearchResult[]> {
+  await rateLimit();
+  const url = `http://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(query)}&api_key=${apiKey}&format=json&limit=10`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Last.fm album search failed: ${res.status}`);
+  const data = (await res.json()) as {
+    results?: {
+      albummatches?: {
+        album?: Array<{
+          name?: string;
+          artist?: string;
+          image?: Array<{ '#text'?: string; size?: string }>;
+        }>;
+      };
+    };
+  };
+
+  const albums = data.results?.albummatches?.album ?? [];
+  return albums.map((a): AlbumSearchResult => {
+    const artist = a.artist ?? '';
+    const name = a.name ?? '';
+    // Pick largest available image
+    const imageSizes = ['extralarge', 'large', 'medium', 'small'];
+    let imageUrl: string | null = null;
+    for (const size of imageSizes) {
+      const img = a.image?.find((i) => i.size === size)?.['#text'];
+      if (img && !img.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
+        imageUrl = img;
+        break;
+      }
+    }
+    return {
+      id: `${artist}::${name}`,
+      title: name,
+      subtitle: artist,
+      imageUrl,
+      releaseDate: '',
+    };
+  });
+}
+
 export async function fetchAllArtistPopularity(
   apiKey: string,
   albums: AlbumRelease[],

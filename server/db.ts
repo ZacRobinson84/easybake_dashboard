@@ -27,6 +27,26 @@ export async function initDb(): Promise<void> {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS watched_items (
+      id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      title TEXT NOT NULL,
+      subtitle TEXT NOT NULL DEFAULT '',
+      image_url TEXT,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY (category, id)
+    )
+  `);
+
+  // Migrate existing watched_movies into watched_items (idempotent)
+  await pool.query(`
+    INSERT INTO watched_items (id, category, title, subtitle, image_url, added_at)
+    SELECT id::TEXT, 'movie', title, COALESCE(release_date, ''), poster_url, added_at
+    FROM watched_movies
+    ON CONFLICT (category, id) DO NOTHING
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS spotify_tokens (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
       access_token TEXT NOT NULL,
@@ -82,6 +102,48 @@ export async function dbInsertWatchedMovie(movie: WatchedMovie): Promise<void> {
 export async function dbDeleteWatchedMovie(id: number): Promise<void> {
   if (!pool) return;
   await pool.query('DELETE FROM watched_movies WHERE id = $1', [id]);
+}
+
+// --- Watched Items (unified: movie | tv | album | book) ---
+
+export interface WatchedItem {
+  id: string;
+  category: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string | null;
+  addedAt: string;
+}
+
+export async function dbGetWatchedItems(category: string): Promise<WatchedItem[] | null> {
+  if (!pool) return null;
+  const { rows } = await pool.query(
+    'SELECT id, category, title, subtitle, image_url, added_at FROM watched_items WHERE category = $1 ORDER BY added_at DESC',
+    [category],
+  );
+  return rows.map((r: { id: string; category: string; title: string; subtitle: string; image_url: string | null; added_at: string }) => ({
+    id: r.id,
+    category: r.category,
+    title: r.title,
+    subtitle: r.subtitle,
+    imageUrl: r.image_url,
+    addedAt: r.added_at,
+  }));
+}
+
+export async function dbInsertWatchedItem(item: WatchedItem): Promise<void> {
+  if (!pool) return;
+  await pool.query(
+    `INSERT INTO watched_items (id, category, title, subtitle, image_url, added_at)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (category, id) DO NOTHING`,
+    [item.id, item.category, item.title, item.subtitle, item.imageUrl, item.addedAt],
+  );
+}
+
+export async function dbDeleteWatchedItem(category: string, id: string): Promise<void> {
+  if (!pool) return;
+  await pool.query('DELETE FROM watched_items WHERE category = $1 AND id = $2', [category, id]);
 }
 
 // --- Spotify Tokens ---

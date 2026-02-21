@@ -195,6 +195,39 @@ export async function searchMovies(apiKey: string, query: string): Promise<Movie
   }));
 }
 
+export interface TVSearchResult {
+  id: number;
+  title: string;
+  subtitle: string; // first air year
+  imageUrl: string | null;
+  releaseDate: string;
+}
+
+export async function searchTV(apiKey: string, query: string): Promise<TVSearchResult[]> {
+  const url = new URL('https://api.themoviedb.org/3/search/tv');
+  url.searchParams.set('api_key', apiKey);
+  url.searchParams.set('query', query);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`TMDB TV search failed: ${res.status}`);
+  const data = (await res.json()) as {
+    results: Array<{
+      id: number;
+      name?: string;
+      first_air_date?: string;
+      poster_path?: string | null;
+    }>;
+  };
+
+  return data.results.map((show) => ({
+    id: show.id,
+    title: show.name ?? '',
+    subtitle: show.first_air_date ? show.first_air_date.slice(0, 4) : '',
+    imageUrl: show.poster_path ? `https://image.tmdb.org/t/p/w300${show.poster_path}` : null,
+    releaseDate: show.first_air_date ?? '',
+  }));
+}
+
 export async function fetchDirectorFilmography(apiKey: string, personId: number): Promise<DirectorFilm[]> {
   const url = `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${apiKey}`;
   const res = await fetch(url);

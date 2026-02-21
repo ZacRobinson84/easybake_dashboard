@@ -77,7 +77,7 @@ function normalizeSearchResult(raw: Record<string, unknown>, tab: TabKey): Searc
     return {
       id: raw['id'] as number,
       title: (raw['title'] as string) ?? '',
-      subtitle: raw['releaseDate'] ? String(raw['releaseDate']).slice(0, 4) : '',
+      subtitle: (raw['releaseDate'] as string) ?? '',
       imageUrl: (raw['posterUrl'] as string | null) ?? null,
       releaseDate: (raw['releaseDate'] as string) ?? '',
     };

@@ -420,10 +420,17 @@ interface LegacyWatchedMovie {
   addedAt: string;
 }
 
+function sortWatchedItems(items: WatchedItem[], category: string): WatchedItem[] {
+  if (category === 'movie' || category === 'tv') {
+    return [...items].sort((a, b) => b.subtitle.localeCompare(a.subtitle));
+  }
+  return items;
+}
+
 function readWatchedItems(category: string): WatchedItem[] {
   try {
     const all = JSON.parse(fs.readFileSync(WATCHED_ITEMS_FILE, 'utf-8')) as WatchedItem[];
-    return all.filter((i) => i.category === category);
+    return sortWatchedItems(all.filter((i) => i.category === category), category);
   } catch {
     // Fall back to old watched-movies.json for movie category
     if (category === 'movie') {

@@ -118,7 +118,10 @@ export interface WatchedItem {
 export async function dbGetWatchedItems(category: string): Promise<WatchedItem[] | null> {
   if (!pool) return null;
   const { rows } = await pool.query(
-    'SELECT id, category, title, subtitle, image_url, added_at FROM watched_items WHERE category = $1 ORDER BY added_at DESC',
+    `SELECT id, category, title, subtitle, image_url, added_at FROM watched_items WHERE category = $1
+     ORDER BY
+       CASE WHEN $1 IN ('movie', 'tv') THEN subtitle END DESC NULLS LAST,
+       added_at DESC`,
     [category],
   );
   return rows.map((r: { id: string; category: string; title: string; subtitle: string; image_url: string | null; added_at: string }) => ({

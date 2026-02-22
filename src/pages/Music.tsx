@@ -276,20 +276,20 @@ export default function Music() {
       <div className="mb-6 flex items-center gap-2">
         <button
           onClick={() => setActiveTab('releases')}
-          className={`min-w-[7rem] text-center rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+          className={`min-w-[7rem] text-center rounded px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
             activeTab === 'releases'
-              ? 'bg-indigo-600 text-white'
-              : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
+              ? 'bg-amber-500/40 text-white/90'
+              : 'bg-gray-500/20 text-white/40 hover:bg-gray-500/30 hover:text-white/60'
           }`}
         >
           New Releases
         </button>
         <button
           onClick={() => setActiveTab('top-charts')}
-          className={`min-w-[7rem] text-center rounded-full px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+          className={`min-w-[7rem] text-center rounded px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
             activeTab === 'top-charts'
-              ? 'bg-indigo-600 text-white'
-              : 'border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300'
+              ? 'bg-amber-500/40 text-white/90'
+              : 'bg-gray-500/20 text-white/40 hover:bg-gray-500/30 hover:text-white/60'
           }`}
         >
           Top Charts

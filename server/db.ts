@@ -51,6 +51,10 @@ export async function initDb(): Promise<void> {
   `);
 
   await pool.query(`
+    ALTER TABLE watched_items ADD COLUMN IF NOT EXISTS director TEXT DEFAULT NULL
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS spotify_tokens (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
       access_token TEXT NOT NULL,
@@ -118,18 +122,19 @@ export interface WatchedItem {
   imageUrl: string | null;
   addedAt: string;
   rating: number | null;
+  director: string | null;
 }
 
 export async function dbGetWatchedItems(category: string): Promise<WatchedItem[] | null> {
   if (!pool) return null;
   const { rows } = await pool.query(
-    `SELECT id, category, title, subtitle, image_url, added_at, rating FROM watched_items WHERE category = $1
+    `SELECT id, category, title, subtitle, image_url, added_at, rating, director FROM watched_items WHERE category = $1
      ORDER BY
        CASE WHEN $1 IN ('movie', 'tv') THEN subtitle END DESC NULLS LAST,
        added_at DESC`,
     [category],
   );
-  return rows.map((r: { id: string; category: string; title: string; subtitle: string; image_url: string | null; added_at: string; rating: number | null }) => ({
+  return rows.map((r: { id: string; category: string; title: string; subtitle: string; image_url: string | null; added_at: string; rating: number | null; director: string | null }) => ({
     id: r.id,
     category: r.category,
     title: r.title,
@@ -137,16 +142,17 @@ export async function dbGetWatchedItems(category: string): Promise<WatchedItem[]
     imageUrl: r.image_url,
     addedAt: r.added_at,
     rating: r.rating ?? null,
+    director: r.director ?? null,
   }));
 }
 
 export async function dbInsertWatchedItem(item: WatchedItem): Promise<void> {
   if (!pool) return;
   await pool.query(
-    `INSERT INTO watched_items (id, category, title, subtitle, image_url, added_at, rating)
-     VALUES ($1, $2, $3, $4, $5, $6, NULL)
+    `INSERT INTO watched_items (id, category, title, subtitle, image_url, added_at, rating, director)
+     VALUES ($1, $2, $3, $4, $5, $6, NULL, $7)
      ON CONFLICT (category, id) DO NOTHING`,
-    [item.id, item.category, item.title, item.subtitle, item.imageUrl, item.addedAt],
+    [item.id, item.category, item.title, item.subtitle, item.imageUrl, item.addedAt, item.director ?? null],
   );
 }
 

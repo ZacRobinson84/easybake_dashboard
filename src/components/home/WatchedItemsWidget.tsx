@@ -44,6 +44,7 @@ interface WatchedItem {
   imageUrl: string | null;
   addedAt: string;
   rating?: number | null;
+  director?: string | null;
 }
 
 interface SearchResult {
@@ -150,68 +151,70 @@ function ItemBottomSheet({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 top-20 z-50 bg-[#2a1f1a]/60 backdrop-blur-sm transition-opacity duration-200 flex flex-col items-center justify-center gap-4 px-5 py-5 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      onClick={onClose}
+      className={`fixed inset-x-0 bottom-0 top-20 z-50 bg-white/20 backdrop-blur-sm transition-opacity duration-200 flex flex-col items-center justify-center px-6 pb-8 pt-4 ${visible ? 'opacity-100' : 'opacity-0'}`}
     >
-      {/* Close button — floats just above the artwork, right-aligned */}
-      <div className="w-full flex justify-end shrink-0">
-        <button
-          onClick={onClose}
-          className="h-7 w-7 flex items-center justify-center rounded-full bg-white/10 text-white/50 hover:bg-white/20"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Artwork — desired size, shrinks when card is short */}
-      <div className={`shrink min-h-0 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'h-56' : 'h-60'}`}>
+      {/* Artwork */}
+      <div className="shrink-0 flex items-center justify-center">
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
             alt={item.title}
-            className={`h-full w-auto rounded-lg shadow-lg ${tab.aspect === 'aspect-square' ? 'max-w-56' : 'max-w-40'}`}
+            className={`max-h-[55vh] w-auto rounded-lg shadow-lg ${tab.aspect === 'aspect-square' ? 'max-w-72' : 'max-w-52'}`}
           />
         ) : (
-          <div className={`h-full rounded-lg bg-white/10 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'aspect-square' : 'aspect-[2/3]'}`}>
+          <div className={`max-h-[55vh] rounded-lg bg-white/10 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'aspect-square w-72' : 'aspect-[2/3] w-52'}`}>
             <tab.Icon className="h-16 w-16 text-white/20" />
           </div>
         )}
       </div>
 
-      {/* Title / subtitle */}
-      <div className="text-center shrink-0">
-        <p className="text-sm font-semibold text-white leading-tight">{item.title}</p>
-        <p className="text-xs text-white/50">{item.subtitle}</p>
-      </div>
-
-      {/* Stars */}
-      <div className="flex items-center gap-2 shrink-0">
-        {[1, 2, 3, 4, 5].map((n) =>
-          locked ? (
-            <Star
-              key={n}
-              className={`h-7 w-7 ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/25'}`}
-            />
-          ) : (
-            <button
-              key={n}
-              onMouseEnter={() => setHovered(n)}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => onRate(n)}
-              className="p-0.5"
-            >
-              <Star
-                className={`h-7 w-7 transition-colors ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/25'}`}
-              />
-            </button>
-          )
+      {/* Metadata + stars — grouped tightly below artwork */}
+      <div className="mt-4 shrink-0 flex flex-col items-center gap-3">
+        {/* Title / subtitle */}
+        {tab.key === 'movie' ? (
+          <div className="rounded-xl bg-black/70 px-4 py-2.5 text-center">
+            {item.subtitle && <p className="text-xs text-white leading-snug">Release date: {item.subtitle.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$2-$3-$1')}</p>}
+            {item.director && <p className="text-xs text-white leading-snug">Directed by: {item.director}</p>}
+          </div>
+        ) : (
+          <div className="text-center">
+            <p className="text-sm font-semibold text-white leading-tight">{item.title}</p>
+            <p className="text-xs text-white/50">{item.subtitle}</p>
+          </div>
         )}
-        {locked && <span className="ml-1 text-xs text-white/40">Rated</span>}
+
+        {/* Stars — stopPropagation so tapping stars doesn't dismiss the sheet */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center gap-2 bg-rose-500/75 rounded-xl px-5 py-3"
+        >
+          {locked ? (
+            Array.from({ length: item.rating! }, (_, i) => (
+              <Star key={i + 1} className="h-7 w-7 text-yellow-400 fill-yellow-400" />
+            ))
+          ) : (
+            [1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                onMouseEnter={() => setHovered(n)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => onRate(n)}
+                className="p-1"
+              >
+                <Star
+                  className={`h-7 w-7 transition-colors ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/25'}`}
+                />
+              </button>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Remove button */}
       <button
-        onClick={() => { onRemove(); onClose(); }}
-        className="shrink-0 text-sm text-red-400/80 hover:text-red-400 transition-colors"
+        onClick={(e) => { e.stopPropagation(); onRemove(); onClose(); }}
+        className="mt-5 shrink-0 text-sm text-red-400/80 hover:text-red-400 transition-colors"
       >
         Remove from log
       </button>

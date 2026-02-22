@@ -228,6 +228,14 @@ export async function searchTV(apiKey: string, query: string): Promise<TVSearchR
   }));
 }
 
+export async function fetchMovieDirector(apiKey: string, movieId: string): Promise<string | null> {
+  const url = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const credits = (await res.json()) as TMDBCreditsResponse;
+  return credits.crew.find((c) => c.job === 'Director')?.name ?? null;
+}
+
 export async function fetchDirectorFilmography(apiKey: string, personId: number): Promise<DirectorFilm[]> {
   const url = `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${apiKey}`;
   const res = await fetch(url);

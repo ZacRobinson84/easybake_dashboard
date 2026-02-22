@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { fetchTodayReleases } from './igdb.ts';
 import { fetchAllSteamReviews, fetchAllSteamDescriptions, backfillSteamAppIds } from './steam.ts';
-import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, searchMovies, searchTV } from './tmdb.ts';
+import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, fetchMovieDirector, searchMovies, searchTV } from './tmdb.ts';
 import fs from 'fs';
 import path from 'path';
 import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
@@ -539,7 +539,12 @@ app.post('/api/watched/:category', async (req, res) => {
     imageUrl: imageUrl ?? null,
     addedAt: new Date().toISOString(),
     rating: null,
+    director: null,
   };
+
+  if (category === 'movie' && tmdbApiKey) {
+    item.director = await fetchMovieDirector(tmdbApiKey, String(id)).catch(() => null);
+  }
 
   if (hasDatabase()) {
     await dbInsertWatchedItem(item);

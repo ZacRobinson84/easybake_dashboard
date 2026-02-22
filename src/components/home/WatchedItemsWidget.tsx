@@ -196,7 +196,7 @@ function ItemBottomSheet({
               key={n}
               onMouseEnter={() => setHovered(n)}
               onMouseLeave={() => setHovered(null)}
-              onClick={() => { onRate(n); onClose(); }}
+              onClick={() => onRate(n)}
               className="p-0.5"
             >
               <Star
@@ -272,7 +272,7 @@ function WatchedAlbumCard({ item, onRemove, onRate, onTap }: { item: WatchedItem
 export default function WatchedItemsWidget() {
   const { authFetch } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('movie');
-  const [sheetItem, setSheetItem] = useState<WatchedItem | null>(null);
+  const [sheetItemId, setSheetItemId] = useState<string | null>(null);
 
   // Per-tab state: items, search
   const [items, setItems] = useState<Record<TabKey, WatchedItem[] | null>>({
@@ -332,6 +332,7 @@ export default function WatchedItemsWidget() {
 
   const tab = TABS.find((t) => t.key === activeTab)!;
   const currentItems = items[activeTab];
+  const sheetItem = sheetItemId ? (currentItems?.find(i => i.id === sheetItemId) ?? null) : null;
 
   const handleSearch = useCallback((q: string) => {
     setSearchQuery(q);
@@ -487,9 +488,9 @@ export default function WatchedItemsWidget() {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {currentItems.map((item) =>
             activeTab === 'album' ? (
-              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} onTap={() => setSheetItem(item)} />
+              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} onTap={() => setSheetItemId(item.id)} />
             ) : (
-              <div key={item.id} className="group relative overflow-hidden rounded-lg" onClick={(e) => { if ((e.nativeEvent as PointerEvent).pointerType === 'touch') setSheetItem(item); }}>
+              <div key={item.id} className="group relative overflow-hidden rounded-lg" onClick={(e) => { if ((e.nativeEvent as PointerEvent).pointerType === 'touch') setSheetItemId(item.id); }}>
                 <button
                   onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
                   className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
@@ -524,7 +525,7 @@ export default function WatchedItemsWidget() {
           tab={tab}
           onRate={(r) => rateItem(sheetItem.id, r)}
           onRemove={() => removeItem(sheetItem.id)}
-          onClose={() => setSheetItem(null)}
+          onClose={() => setSheetItemId(null)}
         />
       )}
     </div>

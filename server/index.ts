@@ -444,6 +444,7 @@ function readWatchedItems(category: string): WatchedItem[] {
           imageUrl: m.posterUrl,
           addedAt: m.addedAt,
           rating: null,
+          director: null,
         }));
       } catch {
         return [];
@@ -472,6 +473,7 @@ function writeWatchedItem(item: WatchedItem): void {
           imageUrl: m.posterUrl,
           addedAt: m.addedAt,
           rating: null,
+          director: null,
         }));
       } catch { /* ignore */ }
     }
@@ -694,6 +696,7 @@ const PORT = process.env.PORT || 3001;
         imageUrl: m.posterUrl,
         addedAt: m.addedAt,
         rating: null,
+        director: null,
       }));
       const dir = path.dirname(WATCHED_ITEMS_FILE);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

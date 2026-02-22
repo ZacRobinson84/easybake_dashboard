@@ -152,8 +152,18 @@ function ItemBottomSheet({
     <div
       className={`absolute inset-0 z-20 bg-[#2a1f1a]/60 rounded-xl shadow-xl backdrop-blur-sm transition-opacity duration-200 flex flex-col items-center justify-center gap-4 px-5 py-5 ${visible ? 'opacity-100' : 'opacity-0'}`}
     >
-      {/* Artwork — desired size, shrinks when card is short; X anchored to its top-right */}
-      <div className={`relative shrink min-h-0 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'h-56' : 'h-60'}`}>
+      {/* Close button — floats just above the artwork, right-aligned */}
+      <div className="w-full flex justify-end shrink-0">
+        <button
+          onClick={onClose}
+          className="h-7 w-7 flex items-center justify-center rounded-full bg-white/10 text-white/50 hover:bg-white/20"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Artwork — desired size, shrinks when card is short */}
+      <div className={`shrink min-h-0 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'h-56' : 'h-60'}`}>
         {item.imageUrl ? (
           <img
             src={item.imageUrl}
@@ -165,12 +175,6 @@ function ItemBottomSheet({
             <tab.Icon className="h-16 w-16 text-white/20" />
           </div>
         )}
-        <button
-          onClick={onClose}
-          className="absolute -right-1 -top-1 h-7 w-7 flex items-center justify-center rounded-full bg-black/40 text-white/60 hover:bg-black/60 hover:text-white"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
 
       {/* Title / subtitle */}

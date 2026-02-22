@@ -21,7 +21,7 @@ import {
   clearTokens,
   fetchArtistTopPreview,
 } from './spotify.ts';
-import { initDb, hasDatabase, dbGetWatchedItems, dbInsertWatchedItem, dbDeleteWatchedItem, dbGetDismissedCards, dbDismissCard } from './db.ts';
+import { initDb, hasDatabase, dbGetWatchedItems, dbInsertWatchedItem, dbDeleteWatchedItem, dbUpdateWatchedItemRating, dbGetDismissedCards, dbDismissCard } from './db.ts';
 import type { WatchedItem } from './db.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
@@ -443,6 +443,7 @@ function readWatchedItems(category: string): WatchedItem[] {
           subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : '',
           imageUrl: m.posterUrl,
           addedAt: m.addedAt,
+          rating: null,
         }));
       } catch {
         return [];
@@ -470,6 +471,7 @@ function writeWatchedItem(item: WatchedItem): void {
           subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : '',
           imageUrl: m.posterUrl,
           addedAt: m.addedAt,
+          rating: null,
         }));
       } catch { /* ignore */ }
     }
@@ -487,6 +489,18 @@ function deleteWatchedItem(category: string, id: string): void {
     return;
   }
   all = all.filter((i) => !(i.category === category && i.id === id));
+  fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(all, null, 2));
+}
+
+function updateWatchedItemRating(category: string, id: string, rating: number | null): void {
+  let all: WatchedItem[] = [];
+  try {
+    all = JSON.parse(fs.readFileSync(WATCHED_ITEMS_FILE, 'utf-8'));
+  } catch {
+    return;
+  }
+  const item = all.find((i) => i.category === category && i.id === id);
+  if (item) item.rating = rating;
   fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(all, null, 2));
 }
 
@@ -524,6 +538,7 @@ app.post('/api/watched/:category', async (req, res) => {
     subtitle: subtitle ?? '',
     imageUrl: imageUrl ?? null,
     addedAt: new Date().toISOString(),
+    rating: null,
   };
 
   if (hasDatabase()) {
@@ -553,6 +568,31 @@ app.delete('/api/watched/:category/:id', async (req, res) => {
   }
 
   deleteWatchedItem(category, id);
+  res.json(readWatchedItems(category));
+});
+
+app.patch('/api/watched/:category/:id/rating', async (req, res) => {
+  const category = req.params['category'] as string;
+  const id = req.params['id'] as string;
+  if (!(VALID_CATEGORIES as readonly string[]).includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
+  const { rating } = req.body as { rating: unknown };
+  if (rating !== null && (!Number.isInteger(rating) || (rating as number) < 1 || (rating as number) > 5)) {
+    res.status(400).json({ error: 'Rating must be an integer 1–5 or null' });
+    return;
+  }
+  const ratingValue = rating as number | null;
+
+  if (hasDatabase()) {
+    await dbUpdateWatchedItemRating(category, id, ratingValue);
+    const items = await dbGetWatchedItems(category);
+    res.json(items ?? []);
+    return;
+  }
+
+  updateWatchedItemRating(category, id, ratingValue);
   res.json(readWatchedItems(category));
 });
 
@@ -648,6 +688,7 @@ const PORT = process.env.PORT || 3001;
         subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : '',
         imageUrl: m.posterUrl,
         addedAt: m.addedAt,
+        rating: null,
       }));
       const dir = path.dirname(WATCHED_ITEMS_FILE);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Film, Tv, Music, BookOpen, Search, X, Loader2 } from 'lucide-react';
+import { Film, Tv, Music, BookOpen, Search, X, Loader2, Star } from 'lucide-react';
 import ColorThief from 'colorthief';
 import { useAuth } from '../../AuthContext';
 
@@ -43,6 +43,7 @@ interface WatchedItem {
   subtitle: string;
   imageUrl: string | null;
   addedAt: string;
+  rating?: number | null;
 }
 
 interface SearchResult {
@@ -91,7 +92,41 @@ function normalizeSearchResult(raw: Record<string, unknown>, tab: TabKey): Searc
   };
 }
 
-function WatchedAlbumCard({ item, onRemove }: { item: WatchedItem; onRemove: () => void }) {
+function StarRating({ savedRating, onRate }: { savedRating: number | null | undefined; onRate: (r: number) => void }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const locked = savedRating != null;
+  const display = locked ? savedRating : (hovered ?? 0);
+
+  if (locked) {
+    return (
+      <div className="absolute inset-x-0 bottom-0 z-[5] hidden group-hover:flex items-center justify-center gap-px py-1 bg-black/40 rounded-b-lg">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star key={n} className={`h-3 w-3 ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/40'}`} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 z-[5] hidden group-hover:flex items-center justify-center gap-px py-1 bg-black/40 rounded-b-lg">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          onClick={(e) => { e.stopPropagation(); onRate(n); }}
+          onMouseEnter={() => setHovered(n)}
+          onMouseLeave={() => setHovered(null)}
+          className="p-0.5"
+        >
+          <Star
+            className={`h-3 w-3 transition-colors ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/40'}`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function WatchedAlbumCard({ item, onRemove, onRate }: { item: WatchedItem; onRemove: () => void; onRate: (r: number) => void }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
 
@@ -116,7 +151,7 @@ function WatchedAlbumCard({ item, onRemove }: { item: WatchedItem; onRemove: () 
       >
         <X className="h-3 w-3" />
       </button>
-      <div className="aspect-square overflow-hidden rounded-t-lg bg-white/10">
+      <div className="relative aspect-square overflow-hidden rounded-t-lg bg-white/10">
         {item.imageUrl ? (
           <img
             ref={imgRef}
@@ -131,6 +166,7 @@ function WatchedAlbumCard({ item, onRemove }: { item: WatchedItem; onRemove: () 
             <Music className="h-8 w-8 text-white/20" />
           </div>
         )}
+        <StarRating savedRating={item.rating} onRate={onRate} />
       </div>
       <div className="rounded-b-lg p-2" style={gradientStyle ?? { background: 'rgba(255,255,255,0.08)' }}>
         <p className="text-xs font-semibold text-white line-clamp-1">{item.title}</p>
@@ -250,6 +286,17 @@ export default function WatchedItemsWidget() {
       .catch(() => {});
   };
 
+  const rateItem = (id: string, rating: number) => {
+    authFetch(`/api/watched/${activeTab}/${encodeURIComponent(id)}/rating`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating }),
+    })
+      .then((res) => res.json())
+      .then((data: WatchedItem[]) => setItems((prev) => ({ ...prev, [activeTab]: data })))
+      .catch(() => {});
+  };
+
   const containerStyle = { clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' };
 
   return (
@@ -345,9 +392,9 @@ export default function WatchedItemsWidget() {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {currentItems.map((item) =>
             activeTab === 'album' ? (
-              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} />
+              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} />
             ) : (
-              <div key={item.id} className="group relative">
+              <div key={item.id} className="group relative overflow-hidden rounded-lg">
                 <button
                   onClick={() => removeItem(item.id)}
                   className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
@@ -359,13 +406,14 @@ export default function WatchedItemsWidget() {
                     src={item.imageUrl}
                     alt={item.title}
                     title={item.title}
-                    className={`w-full rounded-lg object-cover ${tab.aspect}`}
+                    className={`w-full object-cover ${tab.aspect}`}
                   />
                 ) : (
-                  <div className={`w-full rounded-lg bg-white/10 flex items-center justify-center ${tab.aspect}`}>
+                  <div className={`w-full bg-white/10 flex items-center justify-center ${tab.aspect}`}>
                     <tab.Icon className="h-8 w-8 text-white/20" />
                   </div>
                 )}
+                <StarRating savedRating={item.rating} onRate={(r) => rateItem(item.id, r)} />
               </div>
             )
           )}

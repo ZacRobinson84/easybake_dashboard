@@ -126,7 +126,98 @@ function StarRating({ savedRating, onRate }: { savedRating: number | null | unde
   );
 }
 
-function WatchedAlbumCard({ item, onRemove, onRate }: { item: WatchedItem; onRemove: () => void; onRate: (r: number) => void }) {
+function ItemBottomSheet({
+  item,
+  tab,
+  onRate,
+  onRemove,
+  onClose,
+}: {
+  item: WatchedItem;
+  tab: typeof TABS[number];
+  onRate: (r: number) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const locked = item.rating != null;
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [visible, setVisible] = useState(false);
+  const display = locked ? item.rating! : (hovered ?? 0);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  return (
+    <div
+      className={`absolute inset-0 z-20 bg-[#2a1f1a]/60 rounded-xl shadow-xl backdrop-blur-sm transition-opacity duration-200 flex flex-col items-center justify-center gap-4 px-5 pt-14 pb-5 ${visible ? 'opacity-100' : 'opacity-0'}`}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute right-4 top-4 h-7 w-7 flex items-center justify-center rounded-full bg-white/10 text-white/50 hover:bg-white/20"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
+      {/* Artwork — desired size, shrinks when card is short */}
+      <div className={`shrink min-h-0 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'h-56' : 'h-60'}`}>
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            className={`h-full w-auto rounded-lg shadow-lg ${tab.aspect === 'aspect-square' ? 'max-w-56' : 'max-w-40'}`}
+          />
+        ) : (
+          <div className={`h-full rounded-lg bg-white/10 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'aspect-square' : 'aspect-[2/3]'}`}>
+            <tab.Icon className="h-16 w-16 text-white/20" />
+          </div>
+        )}
+      </div>
+
+      {/* Title / subtitle */}
+      <div className="text-center shrink-0">
+        <p className="text-sm font-semibold text-white leading-tight">{item.title}</p>
+        <p className="text-xs text-white/50">{item.subtitle}</p>
+      </div>
+
+      {/* Stars */}
+      <div className="flex items-center gap-2 shrink-0">
+        {[1, 2, 3, 4, 5].map((n) =>
+          locked ? (
+            <Star
+              key={n}
+              className={`h-7 w-7 ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/25'}`}
+            />
+          ) : (
+            <button
+              key={n}
+              onMouseEnter={() => setHovered(n)}
+              onMouseLeave={() => setHovered(null)}
+              onClick={() => { onRate(n); onClose(); }}
+              className="p-0.5"
+            >
+              <Star
+                className={`h-7 w-7 transition-colors ${n <= display ? 'text-yellow-400 fill-yellow-400' : 'text-white/25'}`}
+              />
+            </button>
+          )
+        )}
+        {locked && <span className="ml-1 text-xs text-white/40">Rated</span>}
+      </div>
+
+      {/* Remove button */}
+      <button
+        onClick={() => { onRemove(); onClose(); }}
+        className="shrink-0 text-sm text-red-400/80 hover:text-red-400 transition-colors"
+      >
+        Remove from log
+      </button>
+    </div>
+  );
+}
+
+function WatchedAlbumCard({ item, onRemove, onRate, onTap }: { item: WatchedItem; onRemove: () => void; onRate: (r: number) => void; onTap: () => void }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
 
@@ -144,9 +235,9 @@ function WatchedAlbumCard({ item, onRemove, onRate }: { item: WatchedItem; onRem
   };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-lg">
+    <div className="group relative flex flex-col overflow-hidden rounded-lg" onClick={(e) => { if ((e.nativeEvent as PointerEvent).pointerType === 'touch') onTap(); }}>
       <button
-        onClick={onRemove}
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
       >
         <X className="h-3 w-3" />
@@ -179,6 +270,7 @@ function WatchedAlbumCard({ item, onRemove, onRate }: { item: WatchedItem; onRem
 export default function WatchedItemsWidget() {
   const { authFetch } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('movie');
+  const [sheetItem, setSheetItem] = useState<WatchedItem | null>(null);
 
   // Per-tab state: items, search
   const [items, setItems] = useState<Record<TabKey, WatchedItem[] | null>>({
@@ -300,7 +392,8 @@ export default function WatchedItemsWidget() {
   const containerStyle = { clipPath: 'polygon(0 0, calc(100% - 2.25rem) 0, 100% 2.25rem, 100% 100%, 0 100%)' };
 
   return (
-    <div className="max-w-2xl rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
+    <div className="relative max-w-2xl">
+    <div className="rounded-xl bg-[#BB7044]/15 p-4" style={containerStyle}>
       {/* Header */}
       <div className="mb-3 flex items-center gap-3">
         <div className="flex items-center gap-1.5 shrink-0">
@@ -392,11 +485,11 @@ export default function WatchedItemsWidget() {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {currentItems.map((item) =>
             activeTab === 'album' ? (
-              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} />
+              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} onTap={() => setSheetItem(item)} />
             ) : (
-              <div key={item.id} className="group relative overflow-hidden rounded-lg">
+              <div key={item.id} className="group relative overflow-hidden rounded-lg" onClick={(e) => { if ((e.nativeEvent as PointerEvent).pointerType === 'touch') setSheetItem(item); }}>
                 <button
-                  onClick={() => removeItem(item.id)}
+                  onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
                   className="absolute right-1 top-1 z-10 hidden group-hover:flex h-5 w-5 items-center justify-center rounded bg-black/15 text-white/30 hover:bg-black/30 hover:text-white/60 transition-colors"
                 >
                   <X className="h-3 w-3" />
@@ -418,6 +511,19 @@ export default function WatchedItemsWidget() {
             )
           )}
         </div>
+      )}
+
+    </div>
+
+      {/* Mobile bottom sheet — outside the clipped div so rounded-xl applies cleanly */}
+      {sheetItem && (
+        <ItemBottomSheet
+          item={sheetItem}
+          tab={tab}
+          onRate={(r) => rateItem(sheetItem.id, r)}
+          onRemove={() => removeItem(sheetItem.id)}
+          onClose={() => setSheetItem(null)}
+        />
       )}
     </div>
   );

@@ -150,7 +150,7 @@ function ItemBottomSheet({
 
   return (
     <div
-      className={`absolute inset-0 z-20 bg-[#2a1f1a]/60 rounded-xl shadow-xl backdrop-blur-sm transition-opacity duration-200 flex flex-col items-center justify-center gap-4 px-5 py-5 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-x-0 bottom-0 top-20 z-50 bg-[#2a1f1a]/60 backdrop-blur-sm transition-opacity duration-200 flex flex-col items-center justify-center gap-4 px-5 py-5 ${visible ? 'opacity-100' : 'opacity-0'}`}
     >
       {/* Close button — floats just above the artwork, right-aligned */}
       <div className="w-full flex justify-end shrink-0">

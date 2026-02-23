@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, MapPin } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import WatchedItemsWidget from '../components/home/WatchedItemsWidget';
+import NewsWidget from '../components/home/NewsWidget';
 
 interface ForecastEntry {
   dt: number;
@@ -173,6 +174,9 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* News Widget */}
+      <NewsWidget />
 
       {/* Watched Items Widget */}
       <WatchedItemsWidget />

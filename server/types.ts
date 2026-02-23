@@ -117,3 +117,11 @@ export interface TopChartsResponse {
   topArtists: ChartArtist[];
   topAlbumsByGenre: Record<string, ChartAlbum[]>;
 }
+
+export interface NewsItem {
+  title: string;
+  link: string;
+  date: string;       // ISO 8601
+  source: string;     // feed name
+  snippet: string;    // plain text, truncated to ~200 chars
+}

@@ -12,6 +12,7 @@ import path from 'path';
 import { fetchUpcomingFridayAlbums } from './musicbrainz.ts';
 import { fetchAllArtistPopularity, fetchTopCharts, searchAlbums } from './lastfm.ts';
 import { searchBooks } from './openlibrary.ts';
+import { fetchNews } from './news.ts';
 import {
   getAuthUrl,
   exchangeCodeForTokens,
@@ -660,6 +661,17 @@ app.get('/api/albums/search', async (req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error searching albums:', message);
     res.status(500).json({ error: 'Failed to search albums' });
+  }
+});
+
+app.get('/api/news', async (_req, res) => {
+  try {
+    const items = await fetchNews();
+    res.json(items.slice(0, 50));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error fetching news:', message);
+    res.status(500).json({ error: 'Failed to fetch news feeds' });
   }
 });
 

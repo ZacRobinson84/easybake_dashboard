@@ -667,7 +667,7 @@ app.get('/api/albums/search', async (req, res) => {
 app.get('/api/news', async (_req, res) => {
   try {
     const items = await fetchNews();
-    res.json(items.slice(0, 50));
+    res.json(items.slice(0, 100));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error fetching news:', message);

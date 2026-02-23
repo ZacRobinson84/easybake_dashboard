@@ -36,7 +36,7 @@ export default function NewsWidget() {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
       })
-      .then((data: NewsItem[]) => setItems(data.slice(0, 20)))
+      .then((data: NewsItem[]) => setItems(data))
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to fetch news'))
       .finally(() => setLoading(false));
   }, []);

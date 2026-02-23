@@ -5,6 +5,14 @@ const RSS_FEEDS = [
   { url: 'https://hnrss.org/frontpage', name: 'Hacker News' },
   { url: 'https://www.theverge.com/rss/index.xml', name: 'The Verge' },
   { url: 'https://feeds.arstechnica.com/arstechnica/index', name: 'Ars Technica' },
+  { url: 'https://mkaku.org/home/feed/', name: 'Michio Kaku' },
+  { url: 'https://kotaku.com/rss', name: 'Kotaku' },
+  { url: 'https://www.cbc.ca/webfeed/rss/rss-topstories', name: 'CBC Top Stories' },
+  { url: 'https://www.cbc.ca/webfeed/rss/rss-sports-nba', name: 'CBC NBA' },
+  { url: 'https://www.cbc.ca/webfeed/rss/rss-canada-novascotia', name: 'CBC Nova Scotia' },
+  { url: 'https://www.cbc.ca/webfeed/rss/rss-canada', name: 'CBC Canada' },
+  { url: 'https://www.cbc.ca/webfeed/rss/rss-technology', name: 'CBC Tech' },
+  { url: 'https://www.cbc.ca/webfeed/rss/rss-politics', name: 'CBC Politics' },
 ];
 
 const parser = new RSSParser({ timeout: 10000 });

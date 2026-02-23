@@ -349,7 +349,7 @@ export default function Music() {
         <>
           {spotifyAlbums.length > 0 && (
             <div className="mb-8">
-              <h2 className="mb-3 inline-block rounded-lg bg-indigo-600/70 px-3 py-1 text-sm font-semibold text-white">From Your Artists</h2>
+              <h2 className="mb-3 inline-block min-w-[7rem] text-center rounded px-3 py-2 text-sm font-medium bg-sky-500/40 text-white/90">From Your Artists</h2>
               <div className={gridClasses}>
                 {spotifyAlbums.map(renderAlbumCard)}
               </div>
@@ -359,7 +359,7 @@ export default function Music() {
           {otherAlbums.length > 0 && (
             <div>
               {spotifyAlbums.length > 0 && (
-                <h2 className="mb-3 inline-block rounded-lg bg-indigo-600/70 px-3 py-1 text-sm font-semibold text-white">All Upcoming</h2>
+                <h2 className="mb-3 inline-block min-w-[7rem] text-center rounded px-3 py-2 text-sm font-medium bg-sky-500/40 text-white/90">All Upcoming</h2>
               )}
               {(() => {
                 const genreGroups = new Map<string, AlbumRelease[]>();

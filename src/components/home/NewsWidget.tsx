@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Newspaper } from 'lucide-react';
+import { ArrowUpRight, Loader2, Newspaper } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
 interface NewsItem {
@@ -80,33 +80,36 @@ export default function NewsWidget() {
               'bg-indigo-500/15 hover:bg-indigo-500/45',
             ];
             return (
-            <a
+            <div
               key={`${item.link}-${i}`}
-              href={item.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`group/article block rounded-lg p-2 transition-colors ${rowColors[i % rowColors.length]}`}
-              onClick={(e) => {
-                // On touch devices: first tap expands snippet, second tap follows link
-                if ('ontouchstart' in window && item.snippet) {
-                  if (expandedIndex !== i) {
-                    e.preventDefault();
-                    setExpandedIndex(i);
-                  }
+              className={`group/article relative block rounded-lg p-2 transition-colors cursor-pointer ${rowColors[i % rowColors.length]}`}
+              onClick={() => {
+                if (item.snippet) {
+                  setExpandedIndex(expandedIndex === i ? null : i);
                 }
               }}
             >
-              <div className="flex items-center gap-2 mb-0.5">
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-1.5 right-1.5 p-1 rounded-md bg-white/10 hover:bg-white/25 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Open article"
+              >
+                <ArrowUpRight className="h-3.5 w-3.5 text-white/70" />
+              </a>
+              <div className="flex items-center gap-2 mb-0.5 pr-7">
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${SOURCE_BADGE}`}>
                   {item.source}
                 </span>
                 <span className="text-[10px] text-white/70">{timeAgo(item.date)}</span>
               </div>
-              <p className="text-sm text-white line-clamp-2">{item.title}</p>
+              <p className="text-sm text-white line-clamp-2 pr-7">{item.title}</p>
               {item.snippet && (
                 <p className={`text-xs text-white/60 line-clamp-1 mt-0.5 grid transition-[grid-template-rows] duration-200 overflow-hidden ${expandedIndex === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr] md:delay-400 md:group-hover/article:grid-rows-[1fr]'}`}><span className="min-h-0">{item.snippet}</span></p>
               )}
-            </a>
+            </div>
             );
           })}
         </div>

@@ -23,3 +23,32 @@ h2, h3 {
   font-weight: 900;
   font-style: italic;
 }
+
+.scrollbar-thin-brown {
+  scrollbar-width: none;
+}
+.scrollbar-thin-brown::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .scrollbar-thin-brown {
+    scrollbar-width: auto;
+  }
+  .scrollbar-thin-brown::-webkit-scrollbar {
+    display: block;
+    width: 20px;
+  }
+  .scrollbar-thin-brown::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin-brown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0);
+    border-radius: 10px;
+  }
+  .scrollbar-thin-brown:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .scrollbar-thin-brown:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.85);
+  }
+}

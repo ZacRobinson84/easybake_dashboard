@@ -25,6 +25,7 @@ export interface IGDBGame {
   websites?: IGDBWebsite[];
   hypes?: number;
   follows?: number;
+  first_release_date?: number;
 }
 
 export interface GameRelease {

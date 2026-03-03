@@ -4,7 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { fetchTodayReleases } from './igdb.ts';
+import { fetchTodayReleases, searchGames } from './igdb.ts';
 import { fetchAllSteamReviews, fetchAllSteamDescriptions, backfillSteamAppIds } from './steam.ts';
 import { fetchUpcomingFridayMovies, fetchNowPlayingMovies, fetchDirectorFilmography, fetchMovieDirector, searchMovies, searchTV } from './tmdb.ts';
 import fs from 'fs';
@@ -408,7 +408,7 @@ app.get('/api/weather/forecast', async (req, res) => {
 
 // --- Watched Items (unified: movie | tv | album | book) ---
 
-const VALID_CATEGORIES = ['movie', 'tv', 'album', 'book'] as const;
+const VALID_CATEGORIES = ['movie', 'tv', 'album', 'book', 'game'] as const;
 
 const OLD_WATCHED_FILE = path.join(process.cwd(), 'data', 'watched-movies.json');
 const WATCHED_ITEMS_FILE = path.join(process.cwd(), 'data', 'watched-items.json');
@@ -688,6 +688,22 @@ app.get('/api/books/search', async (req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Error searching books:', message);
     res.status(500).json({ error: 'Failed to search books' });
+  }
+});
+
+app.get('/api/games/search', async (req, res) => {
+  const q = req.query['q'] as string | undefined;
+  if (!q) {
+    res.status(400).json({ error: 'Missing q parameter' });
+    return;
+  }
+  try {
+    const results = await searchGames(clientId, clientSecret, q);
+    res.json(results);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Error searching games:', message);
+    res.status(500).json({ error: 'Failed to search games' });
   }
 });
 

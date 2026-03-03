@@ -1,5 +1,13 @@
 import type { IGDBGame, GameRelease } from './types.ts';
 
+export interface GameSearchResult {
+  id: number;
+  title: string;
+  subtitle: string;
+  imageUrl: string | null;
+  releaseDate: string;
+}
+
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
@@ -27,6 +35,52 @@ async function getTwitchToken(clientId: string, clientSecret: string): Promise<s
   cachedToken = data.access_token;
   tokenExpiresAt = now + data.expires_in * 1000;
   return cachedToken;
+}
+
+export async function searchGames(clientId: string, clientSecret: string, query: string): Promise<GameSearchResult[]> {
+  const token = await getTwitchToken(clientId, clientSecret);
+
+  const body = [
+    'fields name,cover.url,first_release_date,platforms.name;',
+    `search "${query}";`,
+    'limit 10;',
+  ].join('\n');
+
+  const res = await fetch('https://api.igdb.com/v4/games', {
+    method: 'POST',
+    headers: {
+      'Client-ID': clientId,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'text/plain',
+      'Accept': 'application/json',
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    throw new Error(`IGDB search failed: ${res.status} ${await res.text()}`);
+  }
+
+  const games = (await res.json()) as IGDBGame[];
+
+  return games.map((game) => {
+    let coverUrl: string | null = null;
+    if (game.cover?.url) {
+      coverUrl = `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`;
+    }
+    const platforms = game.platforms?.map((p) => p.name).join(', ') ?? '';
+    const releaseDate = game.first_release_date
+      ? new Date(game.first_release_date * 1000).toISOString().slice(0, 10)
+      : '';
+
+    return {
+      id: game.id,
+      title: game.name,
+      subtitle: platforms,
+      imageUrl: coverUrl,
+      releaseDate,
+    };
+  });
 }
 
 export async function fetchTodayReleases(clientId: string, clientSecret: string): Promise<GameRelease[]> {

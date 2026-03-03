@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Film, Tv, Music, BookOpen, Search, X, Loader2, Star } from 'lucide-react';
+import { Film, Tv, Music, BookOpen, Gamepad2, Search, X, Loader2, Star } from 'lucide-react';
 import ColorThief from 'colorthief';
 import { useAuth } from '../../AuthContext';
 
@@ -55,7 +55,7 @@ interface SearchResult {
   releaseDate?: string;
 }
 
-type TabKey = 'movie' | 'tv' | 'album' | 'book';
+type TabKey = 'movie' | 'tv' | 'album' | 'book' | 'game';
 
 const TABS: {
   key: TabKey;
@@ -65,9 +65,10 @@ const TABS: {
   aspect: string;
 }[] = [
   { key: 'movie',  label: 'Movies',  searchEndpoint: '/api/movies/search', Icon: Film,     aspect: 'aspect-[2/3]' },
-  { key: 'tv',     label: 'Television', searchEndpoint: '/api/tv/search',  Icon: Tv,       aspect: 'aspect-[2/3]' },
+  { key: 'tv',     label: 'Tv',      searchEndpoint: '/api/tv/search',     Icon: Tv,       aspect: 'aspect-[2/3]' },
   { key: 'album',  label: 'Music',   searchEndpoint: '/api/albums/search', Icon: Music,    aspect: 'aspect-square' },
   { key: 'book',   label: 'Books',   searchEndpoint: '/api/books/search',  Icon: BookOpen, aspect: 'aspect-[2/3]' },
+  { key: 'game',   label: 'Games',   searchEndpoint: '/api/games/search',  Icon: Gamepad2, aspect: 'aspect-[3/4]' },
 ];
 
 function normalizeSearchResult(raw: Record<string, unknown>, tab: TabKey): SearchResult {
@@ -279,10 +280,10 @@ export default function WatchedItemsWidget() {
 
   // Per-tab state: items, search
   const [items, setItems] = useState<Record<TabKey, WatchedItem[] | null>>({
-    movie: null, tv: null, album: null, book: null,
+    movie: null, tv: null, album: null, book: null, game: null,
   });
   const [fetched, setFetched] = useState<Record<TabKey, boolean>>({
-    movie: false, tv: false, album: false, book: false,
+    movie: false, tv: false, album: false, book: false, game: false,
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -412,18 +413,20 @@ export default function WatchedItemsWidget() {
       </div>
 
       {/* Folder tabs */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {TABS.map(({ key, label }) => (
+      <div className="mb-4 flex gap-1.5">
+        {TABS.map(({ key, label, Icon }) => (
           <button
             key={key}
             onClick={() => handleTabSwitch(key)}
-            className={`cursor-pointer rounded px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
+            title={label}
+            className={`cursor-pointer rounded flex-1 py-2.5 transition-colors flex items-center justify-center gap-1.5 ${
               activeTab === key
                 ? 'bg-[#BB7044]/30 text-white/80'
                 : 'bg-black/10 text-white/30 hover:bg-black/20 hover:text-white/50'
             }`}
           >
-            {label}
+            <Icon className="h-5 w-5" />
+            <span className="hidden sm:inline text-sm font-medium">{label}</span>
           </button>
         ))}
       </div>
@@ -436,7 +439,7 @@ export default function WatchedItemsWidget() {
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder={`Search for ${{ movie: 'a movie', tv: 'a TV show', album: 'an album', book: 'a book' }[tab.key]}...`}
+            placeholder={`Search for ${{ movie: 'a movie', tv: 'a TV show', album: 'an album', book: 'a book', game: 'a game' }[tab.key]}...`}
             className="w-full rounded-lg bg-white/10 py-2 pl-9 pr-3 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-white/25"
           />
           {searching && (

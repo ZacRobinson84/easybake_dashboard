@@ -22,7 +22,9 @@ import {
   clearTokens,
   fetchArtistTopPreview,
 } from './spotify.ts';
-import { initDb, hasDatabase, dbGetWatchedItems, dbInsertWatchedItem, dbDeleteWatchedItem, dbUpdateWatchedItemRating, dbGetDismissedCards, dbDismissCard } from './db.ts';
+import multer from 'multer';
+import sharp from 'sharp';
+import { initDb, hasDatabase, dbGetWatchedItems, dbInsertWatchedItem, dbDeleteWatchedItem, dbUpdateWatchedItemRating, dbUpdateWatchedItemImageUrl, dbGetDismissedCards, dbDismissCard } from './db.ts';
 import type { WatchedItem } from './db.ts';
 import type { GameReleaseWithReviews } from './types.ts';
 
@@ -36,6 +38,18 @@ const openweatherApiKey = process.env['OPENWEATHER_API_KEY'];
 
 const jwtSecret = process.env['JWT_SECRET'];
 const dashboardPasswordHash = process.env['DASHBOARD_PASSWORD_HASH'];
+
+const COVERS_DIR = path.join(process.cwd(), 'data', 'covers');
+if (!fs.existsSync(COVERS_DIR)) fs.mkdirSync(COVERS_DIR, { recursive: true });
+
+const coverStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, COVERS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${req.params['category']}-${req.params['id']}${ext}`);
+  },
+});
+const uploadCover = multer({ storage: coverStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 if (!clientId || !clientSecret) {
   console.error('Missing required environment variables: TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET');
@@ -52,6 +66,9 @@ const app = express();
 
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
 app.use(express.json());
+
+// Serve uploaded covers without auth
+app.use('/api/covers', express.static(COVERS_DIR));
 
 // --- Auth routes & middleware ---
 
@@ -495,6 +512,30 @@ function deleteWatchedItem(category: string, id: string): void {
   fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(all, null, 2));
 }
 
+function updateWatchedItemImageUrl(category: string, id: string, imageUrl: string): void {
+  let all: WatchedItem[] = [];
+  try {
+    all = JSON.parse(fs.readFileSync(WATCHED_ITEMS_FILE, 'utf-8'));
+  } catch {
+    return;
+  }
+  const item = all.find((i) => i.category === category && i.id === id);
+  if (item) item.imageUrl = imageUrl;
+  fs.writeFileSync(WATCHED_ITEMS_FILE, JSON.stringify(all, null, 2));
+}
+
+function removeCoversForItem(category: string, id: string): void {
+  const prefix = `${category}-${id}`;
+  try {
+    for (const file of fs.readdirSync(COVERS_DIR)) {
+      const name = path.parse(file).name;
+      if (name === prefix) {
+        fs.unlinkSync(path.join(COVERS_DIR, file));
+      }
+    }
+  } catch { /* ignore */ }
+}
+
 function updateWatchedItemRating(category: string, id: string, rating: number | null): void {
   let all: WatchedItem[] = [];
   try {
@@ -568,6 +609,8 @@ app.delete('/api/watched/:category/:id', async (req, res) => {
     return;
   }
 
+  removeCoversForItem(category, id);
+
   if (hasDatabase()) {
     await dbDeleteWatchedItem(category, id);
     const items = await dbGetWatchedItems(category);
@@ -601,6 +644,65 @@ app.patch('/api/watched/:category/:id/rating', async (req, res) => {
   }
 
   updateWatchedItemRating(category, id, ratingValue);
+  res.json(readWatchedItems(category));
+});
+
+app.post('/api/watched/:category/:id/cover', uploadCover.single('cover'), async (req, res) => {
+  const category = req.params['category'] as string;
+  const id = req.params['id'] as string;
+  if (!(VALID_CATEGORIES as readonly string[]).includes(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ error: 'No file uploaded' });
+    return;
+  }
+
+  // Resize to optimized JPEG: 600px wide for posters, 600px square for albums
+  const prefix = `${category}-${id}`;
+  const optimizedName = `${prefix}.jpg`;
+  const optimizedPath = path.join(COVERS_DIR, optimizedName);
+  const uploadedPath = req.file.path;
+
+  try {
+    const width = category === 'album' ? 600 : 400;
+    await sharp(uploadedPath)
+      .resize(width, undefined, { withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toFile(optimizedPath === uploadedPath ? uploadedPath + '.tmp' : optimizedPath);
+
+    // If the uploaded file had a different name/extension, clean it up
+    if (uploadedPath !== optimizedPath) {
+      fs.unlinkSync(uploadedPath);
+    } else {
+      // sharp can't overwrite in place, so we wrote to .tmp
+      fs.renameSync(uploadedPath + '.tmp', optimizedPath);
+    }
+  } catch {
+    // Fallback: keep the original uploaded file as-is
+    if (req.file.filename !== optimizedName) {
+      fs.renameSync(uploadedPath, optimizedPath);
+    }
+  }
+
+  // Remove old cover files with different extensions
+  for (const file of fs.readdirSync(COVERS_DIR)) {
+    if (path.parse(file).name === prefix && file !== optimizedName) {
+      fs.unlinkSync(path.join(COVERS_DIR, file));
+    }
+  }
+
+  const imageUrl = `/api/covers/${optimizedName}`;
+
+  if (hasDatabase()) {
+    await dbUpdateWatchedItemImageUrl(category, id, imageUrl);
+    const items = await dbGetWatchedItems(category);
+    res.json(items ?? []);
+    return;
+  }
+
+  updateWatchedItemImageUrl(category, id, imageUrl);
   res.json(readWatchedItems(category));
 });
 

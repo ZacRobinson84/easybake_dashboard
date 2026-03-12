@@ -156,6 +156,14 @@ export async function dbInsertWatchedItem(item: WatchedItem): Promise<void> {
   );
 }
 
+export async function dbUpdateWatchedItemImageUrl(category: string, id: string, imageUrl: string): Promise<void> {
+  if (!pool) return;
+  await pool.query(
+    'UPDATE watched_items SET image_url = $1 WHERE category = $2 AND id = $3',
+    [imageUrl, category, id],
+  );
+}
+
 export async function dbUpdateWatchedItemRating(category: string, id: string, rating: number | null): Promise<void> {
   if (!pool) return;
   await pool.query(

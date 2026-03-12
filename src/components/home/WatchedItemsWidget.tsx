@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Film, Tv, Music, BookOpen, Gamepad2, Search, X, Loader2, Star } from 'lucide-react';
+import { Film, Tv, Music, BookOpen, Gamepad2, Search, X, Loader2, Star, Plus } from 'lucide-react';
 import ColorThief from 'colorthief';
 import { useAuth } from '../../AuthContext';
 
@@ -134,12 +134,14 @@ function ItemBottomSheet({
   onRate,
   onRemove,
   onClose,
+  onUploadCover,
 }: {
   item: WatchedItem;
   tab: typeof TABS[number];
   onRate: (r: number) => void;
   onRemove: () => void;
   onClose: () => void;
+  onUploadCover: (file: File) => void;
 }) {
   const locked = item.rating != null;
   const [hovered, setHovered] = useState<number | null>(null);
@@ -164,9 +166,11 @@ function ItemBottomSheet({
             className={`max-h-[55vh] w-auto rounded-lg shadow-lg ${tab.aspect === 'aspect-square' ? 'max-w-72' : 'max-w-52'}`}
           />
         ) : (
-          <div className={`max-h-[55vh] rounded-lg bg-white/10 flex items-center justify-center ${tab.aspect === 'aspect-square' ? 'aspect-square w-72' : 'aspect-[2/3] w-52'}`}>
-            <tab.Icon className="h-16 w-16 text-white/20" />
-          </div>
+          <label onClick={(e) => e.stopPropagation()} className={`cursor-pointer max-h-[55vh] rounded-lg bg-white/10 flex flex-col items-center justify-center gap-2 ${tab.aspect === 'aspect-square' ? 'aspect-square w-72' : 'aspect-[2/3] w-52'}`}>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadCover(f); }} />
+            <Plus className="h-10 w-10 text-white/30" />
+            <span className="text-xs text-white/30">Add cover</span>
+          </label>
         )}
       </div>
 
@@ -223,7 +227,7 @@ function ItemBottomSheet({
   );
 }
 
-function WatchedAlbumCard({ item, onRemove, onRate, onTap }: { item: WatchedItem; onRemove: () => void; onRate: (r: number) => void; onTap: () => void }) {
+function WatchedAlbumCard({ item, onRemove, onRate, onTap, onUploadCover }: { item: WatchedItem; onRemove: () => void; onRate: (r: number) => void; onTap: () => void; onUploadCover: (file: File) => void }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [gradientStyle, setGradientStyle] = useState<React.CSSProperties | undefined>(undefined);
 
@@ -259,9 +263,10 @@ function WatchedAlbumCard({ item, onRemove, onRate, onTap }: { item: WatchedItem
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Music className="h-8 w-8 text-white/20" />
-          </div>
+          <label onClick={(e) => e.stopPropagation()} className="cursor-pointer w-full h-full flex flex-col items-center justify-center gap-1">
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadCover(f); }} />
+            <Plus className="h-6 w-6 text-white/30" />
+          </label>
         )}
         <StarRating savedRating={item.rating} onRate={onRate} />
       </div>
@@ -385,6 +390,18 @@ export default function WatchedItemsWidget() {
       .catch(() => {});
   };
 
+  const uploadCover = (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('cover', file);
+    authFetch(`/api/watched/${activeTab}/${encodeURIComponent(id)}/cover`, {
+      method: 'POST',
+      body: formData,
+    })
+      .then((res) => res.json())
+      .then((data: WatchedItem[]) => setItems((prev) => ({ ...prev, [activeTab]: data })))
+      .catch(() => {});
+  };
+
   const rateItem = (id: string, rating: number) => {
     authFetch(`/api/watched/${activeTab}/${encodeURIComponent(id)}/rating`, {
       method: 'PATCH',
@@ -494,7 +511,7 @@ export default function WatchedItemsWidget() {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {currentItems.map((item) =>
             activeTab === 'album' ? (
-              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} onTap={() => setSheetItemId(item.id)} />
+              <WatchedAlbumCard key={item.id} item={item} onRemove={() => removeItem(item.id)} onRate={(r) => rateItem(item.id, r)} onTap={() => setSheetItemId(item.id)} onUploadCover={(f) => uploadCover(item.id, f)} />
             ) : (
               <div key={item.id} className="group relative overflow-hidden rounded-lg" onClick={(e) => { if ((e.nativeEvent as PointerEvent).pointerType === 'touch') setSheetItemId(item.id); }}>
                 <button
@@ -511,9 +528,10 @@ export default function WatchedItemsWidget() {
                     className={`w-full object-cover ${tab.aspect}`}
                   />
                 ) : (
-                  <div className={`w-full bg-white/10 flex items-center justify-center ${tab.aspect}`}>
-                    <tab.Icon className="h-8 w-8 text-white/20" />
-                  </div>
+                  <label onClick={(e) => e.stopPropagation()} className={`cursor-pointer w-full bg-white/10 flex flex-col items-center justify-center gap-1 ${tab.aspect}`}>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(item.id, f); }} />
+                    <Plus className="h-6 w-6 text-white/30" />
+                  </label>
                 )}
                 <StarRating savedRating={item.rating} onRate={(r) => rateItem(item.id, r)} />
               </div>
@@ -532,6 +550,7 @@ export default function WatchedItemsWidget() {
           onRate={(r) => rateItem(sheetItem.id, r)}
           onRemove={() => removeItem(sheetItem.id)}
           onClose={() => setSheetItemId(null)}
+          onUploadCover={(f) => uploadCover(sheetItem.id, f)}
         />
       )}
     </div>
